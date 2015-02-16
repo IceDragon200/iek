@@ -1,4 +1,4 @@
-$simport.r("iek/rgss3_ext/bitmap", "1.0.0", "Extends Bitmap Class")
+$simport.r('iek/rgss3_ext/bitmap', '1.0.0', 'Extends Bitmap Class')
 
 class Bitmap
   alias :org_initialize :initialize

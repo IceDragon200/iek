@@ -1,6 +1,5 @@
-#
-# Kilim-BattleCore/lib/sprite/sprite.rb
-#   dm 02/06/2013
+$simport.r('iek/rgss3_ext/sprite', '1.0.0', 'Extends Sprite Class')
+
 class Sprite
   def to_rect
     Rect.new(x, y, width, height)
@@ -45,13 +44,13 @@ class Sprite
   ##
   # @return [Void]
   def dispose_bitmap
-    self.bitmap.dispose
+    bitmap.dispose
   end
 
   ##
   # @return [Void]
   def dispose_bitmap_safe
-    dispose_bitmap if self.bitmap && !self.bitmap.disposed?
+    dispose_bitmap if bitmap && !bitmap.disposed?
   end
 
   ##

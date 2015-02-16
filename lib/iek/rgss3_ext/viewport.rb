@@ -1,4 +1,17 @@
+$simport.r('iek/rgss3_ext/viewport', '1.0.0', 'Extends Viewport Class')
+
 class Viewport
+  alias :dispose_wo_flag :dispose
+  def dispose
+    dispose_wo_flag
+    @disposed = true
+  end
+
+  def disposed?
+    !!@disposed
+  end
+
+  # @return [Rect]
   def to_rect
     Rect.new(x, y, width, height)
   end

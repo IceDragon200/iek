@@ -1,3 +1,5 @@
+$simport.r('iek/rgss3_ext/window', '1.0.0', 'Extends Window Class')
+
 class Window
   def to_rect
     Rect.new(x, y, width, height)

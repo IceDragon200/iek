@@ -1,7 +1,7 @@
 module RPG
   class BaseItem
     def kind_id
-      0
+      IEK::ItemKinds::BASE
     end
 
     def to_mix_key
@@ -10,22 +10,22 @@ module RPG
   end
   class Item
     def kind_id
-      1
+      IEK::ItemKinds::ITEM
     end
   end
   class Weapon
     def kind_id
-      2
+      IEK::ItemKinds::WEAPON
     end
   end
   class Armor
     def kind_id
-      3
+      IEK::ItemKinds::ARMOR
     end
   end
   class Skill
     def kind_id
-      4
+      IEK::ItemKinds::SKILL
     end
   end
 end

@@ -54,17 +54,17 @@ module IEK
 
     def mix(item1, item2)
       if !item1 || !item2
-        return MixResult.new([], "Invalid items")
+        return MixResult.new([], 'Invalid items')
       end
 
       key = [item1.to_mix_key, item2.to_mix_key]
       mix_results = @mix_table[key]
 
       if mix_results
-        return MixResult.new(mix_results, "Mixed!")
+        return MixResult.new(mix_results, 'Mixed!')
       end
 
-      MixResult.new([], "No mix result")
+      MixResult.new([], 'No mix result')
     end
   end
 end

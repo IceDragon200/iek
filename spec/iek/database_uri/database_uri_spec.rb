@@ -1,3 +1,4 @@
+__END__
 require_relative '../spec_helper'
 require "iek/database_uri/uri/common"
 require "iek/database_uri/uri/generic"

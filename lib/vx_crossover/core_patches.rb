@@ -1,5 +1,11 @@
 class Tilemap
-  attr_accessor :passages
+  def passages
+    flags
+  end
+
+  def passages=(passages)
+    self.flags = passages
+  end
 
   alias :set_map_data :map_data=
   def map_data=(map_data)

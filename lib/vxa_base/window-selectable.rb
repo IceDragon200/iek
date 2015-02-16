@@ -175,7 +175,7 @@ class Window_Selectable < Window_Base
     rect.width = item_width
     rect.height = item_height
     rect.x = index % col_max * (item_width + spacing)
-    rect.y = index / col_max * item_height
+    rect.y = (index / col_max * item_height)
     rect
   end
   #--------------------------------------------------------------------------

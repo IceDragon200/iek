@@ -1,5 +1,5 @@
 class Integer
-  def masked?(flag)
+  def flagged?(flag)
     if flag == 0
       self == 0
     else

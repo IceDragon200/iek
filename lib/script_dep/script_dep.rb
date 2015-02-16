@@ -3,15 +3,15 @@
 # Script Dep
 #   by IceDragon (https://github.com/IceDragon200)
 # Description
-#   This is a version manager class, used for register strings with versions.
-#   Its used mostly for register scripts of version and checking for their
-#   dependencies.
+#   This is a version manager class, used for registering strings with versions.
+#   Its used mostly for registering scripts with their version and
+#   checking for their dependencies.
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class ScriptDep
   VERSION = '1.0.0'
 
   class Conflict < RuntimeError
-    def initialize(id, version=nil)
+    def initialize(id, version = nil)
       if version
         message = "Conflicting (#{id} version: #{version}) is present"
       else
@@ -22,7 +22,7 @@ class ScriptDep
   end
 
   class InvalidDependency < RuntimeError
-    def initialize(id, version=nil)
+    def initialize(id, version = nil)
       if version
         message = "Dependency (#{id} version: #{version}) is missing"
       else

@@ -1,9 +1,13 @@
+$simport.r('iek/win32api/keyboard/keys', '1.0.0', 'Keyboard Keys module')
+
 module Win32
-  module Keyboard
+  class Keyboard
   ##
   # A list of all the VK_* key codes from the Windows library
   #   http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
-    module Key
+    module Keys
+      KEYS = []
+
       ###
       #NULL                      = 0x00 # <NULL>
       LBUTTON                   = 0x01 # Left mouse button
@@ -262,6 +266,20 @@ module Win32
       NONAME                    = 0xFC # Zoom key
       PA1                       = 0xFD # PA1 key
       OEM_CLEAR                 = 0xFE # Zoom key
+
+      constants.each do |k|
+        KEYS << [k, const_get(k)]
+      end
+      KEYS.freeze
+
+      extend Enumerable
+
+      def self.each
+        return to_enum(:each) unless block_given?
+        KEYS.each do |k, v|
+          yield k, v
+        end
+      end
     end
   end
 end

@@ -1,14 +1,25 @@
+$simport.r('iek/win32api/keyboard', '1.0.0', 'Win32 Keyboard module') do |h|
+  h.depend!('iek/win32api/keyboard/keys', '~> 1.0.0')
+  h.depend!('iek/win32api/win32/user32', '~> 1.0.0')
+end
+
 ##
-# Windows compliant Keyboard module for RPG Maker VX Ace
+# Windows compliant Keyboard class for RPG Maker VX Ace
 # Provides a bare minimal API
 module Win32
-  module Keyboard
+  class Keyboard
     ##
     # Defines a Hash with all the VK_* key codes by lower cased Symbol(s)
     # [Hash<Symbol, Integer>] SYMBOL_TO_KEY
-    SYMBOL_TO_KEY = Hash[Keyboard::Key.constants.map { |k|
-                         [k.to_s.downcase.to_sym, Keyboard::Key.const_get(k)] }]
+    SYMBOL_TO_KEY = Hash[Keyboard::Keys.map { |k, v| [k.to_s.to_sym, v] }].freeze
 
+    ##
+    # Initialize Keyboard module
+    def initialize
+      @user32 = Win32::User32.new
+      @byte_array = "\0" * 256
+      @key_state = Array.new(256, false)
+    end
 
     ##
     # Converts given obj to a valid VK key code
@@ -18,25 +29,20 @@ module Win32
     # @overload convert_key(key_id)
     #   @param [Integer] key_id VK_* code
     # @return [Integer]
-    def self.convert_key(obj)
+    def convert_key(obj)
       case obj
       when String, Symbol then return SYMBOL_TO_KEY.fetch(obj.to_sym)
       when Integer        then return obj
       else                     raise TypeError, "wrong argument type #{obj.class} (expected String, Symbol or Integer)"
       end
     end
-
-    ##
-    # Initialize Keyboard module
-    def self.init
-      @key_state = Array.new(256, false)
-    end
+    private :convert_key
 
     ##
     # Checks whether or not the key was pressed?
     # @param [String, Symbol, Integer] obj
     # @return [Boolean]
-    def self.press?(obj)
+    def press?(obj)
       key = convert_key(obj)
       return @key_state[key]
     end
@@ -44,28 +50,21 @@ module Win32
     ##
     # Updates the @key_state Array by grabbing the values from the OS
     # @return [Boolean] Whether or not the array was updated sucessfully
-    def self.update_key_state
-      byte_array = "\0" * 256
-      if Win32::Input.get_keyboard_state(byte_array) > 0
-        byte_array.each_byte.each_with_index do |byte, i|
+    def update_key_state
+      if @user32.get_keyboard_state(@byte_array) > 0
+        @byte_array.each_byte.each_with_index do |byte, i|
           @key_state[i] = (byte >> 7) == 1
         end
         true
       end
     end
+    private :update_key_state
 
     ##
     # Keyboard update function
     # @return [Void]
-    def self.update
+    def update
       update_key_state
     end
-
-    class << self
-      private :convert_key
-      private :update_key_state
-    end
-
-    init
   end
 end

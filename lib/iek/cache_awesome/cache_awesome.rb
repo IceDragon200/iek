@@ -1,48 +1,28 @@
+$simport.r('iek/cache_awesome', '1.0.0', 'Improves the functionality of default Cache')
+
+### prepare for loading the new cache module
+Object.send(:remove_const, :Cache) if Object.constants.include?(:Cache)
 module Cache
-  ### prepare for loading the new cache module
-  class << self
-    remove_method :animation
-    remove_method :battleback1
-    remove_method :battleback2
-    remove_method :battler
-    remove_method :character
-    remove_method :face
-    remove_method :parallax
-    remove_method :picture
-    remove_method :system
-    remove_method :tileset
-    remove_method :title1
-    remove_method :title2
-    remove_method :load_bitmap
-    remove_method :empty_bitmap
-    remove_method :normal_bitmap
-    remove_method :hue_changed_bitmap
-    remove_method :include?
-    remove_method :clear
-  end
   class CacheBitmap < Bitmap
     attr_accessor :cache_key
   end
 
   Loader = Struct.new(:id, :dirname, :loader_func, :fallback_func)
 
-  GFX_ROOT = 'Graphics'
-
-  attr_accessor :log
+  attr_accessor :logger
+  attr_accessor :root
 
   ##
   # init
   def init
-    @log = nil
+    @root = 'Graphics'
+    @logger = Logfmt::NullLogger
     @loader = {}
     @cache = {}
   end
 
-  ###
-  # include?(String key)
   # @param [String] key
   # @return [Boolean]
-  ###
   def include?(key)
     @cache[key] && !@cache[key].disposed?
   end
@@ -62,7 +42,7 @@ module Cache
   end
 
   def cache_bitmap(key)
-    @log.puts "Caching: #{key}" if @log
+    @logger.write fn: 'cache_bitmap', key: key
     unless include? key
       bitmap = yield key
       @cache[key] = bitmap
@@ -118,9 +98,9 @@ module Cache
   ##
   # new_loader(Symbol sym, String dir)
   def new_loader(sym, dir, &fallback)
-    dirpath = File.join(GFX_ROOT, dir)
+    dirpath = File.join(@root, dir)
     ## create_loader
-    loader = lambda do |filename, hue=0|
+    loader = lambda do |filename, hue = 0|
       begin
         load_bitmap dirpath, filename, hue
       rescue Errno::ENOENT => ex

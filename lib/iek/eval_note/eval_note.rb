@@ -5,7 +5,8 @@
 # Description
 #   --
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-$simport.r("eval_note", "1.0.0", "Use eval blocks in your note boxes")
+$simport.r('eval_note', '1.0.0', 'Use eval blocks in your note boxes')
+
 module EvalNote
   def exec(str)
     eval(str)

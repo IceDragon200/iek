@@ -1,3 +1,7 @@
+$simport.r('iek/riviera/scene/item', '1.0.0', 'Riviera styled Item Menu') do |h|
+  h.depend('iek/riviera/scene/item_base', '>= 1.0.0')
+end
+
 class Scene_Item
   def create_category_window
     @category_window = Window_ItemCategory.new
@@ -20,6 +24,6 @@ class Scene_Item
   end
 
   def header_string
-    "Item"
+    'Item'
   end
 end

@@ -1,4 +1,4 @@
-$simport.r('better_switches', '1.0.0', 'Improves the functionality of default Game_Variables')
+$simport.r('iek/better_variables', '1.0.0', 'Improves the functionality of default Game_Variables')
 
 class Game_Variables
   include Enumerable

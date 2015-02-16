@@ -1,3 +1,5 @@
+$simport.r('iek/render_manager', '1.0.0', 'AKA. Window Manager')
+
 class RenderManager
   include Enumerable
 
@@ -5,6 +7,11 @@ class RenderManager
     @elements = []
     @state_cache = []
     @ticks = 0
+    @disposed = false
+  end
+
+  def all
+    @elements.to_a
   end
 
   def each(&block)
@@ -35,6 +42,9 @@ class RenderManager
     @elements.sort_by!(*args, &block)
   end
 
+  #
+  # @param [Symbol] attrs
+  # @return [Array<[Object, Hash<Symbol, Object>]>]
   def save_list(*attrs)
     list = []
     @elements.each do |element|
@@ -45,6 +55,9 @@ class RenderManager
     list
   end
 
+  #
+  # @param [Symbol] attrs
+  # @return [Array[self, Array<[Object, Hash<Symbol, Object>]>]]
   def save(*attrs)
     @state_cache << save_list(*attrs)
     if block_given?
@@ -70,6 +83,11 @@ class RenderManager
 
   def dispose
     @elements.each(&:dispose)
+    @disposed = true
+  end
+
+  def disposed?
+    !!@disposed
   end
 
   def update

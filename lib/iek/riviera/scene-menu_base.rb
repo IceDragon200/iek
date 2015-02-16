@@ -1,7 +1,7 @@
-$simport.r("iek/riviera/scene-menu_base", "1.0.0", "Patch for Menu Headers") do |h|
-  h.depend("iek/rgss3_ext/bitmap", ">= 1.0.0")
-  h.depend("iek/rgss3_ext/font", ">= 1.0.0")
-  h.depend("iek/text", ">= 1.0.0")
+$simport.r('iek/riviera/scene/menu_base', '1.0.0', 'Patch for Menu Headers') do |h|
+  h.depend('iek/rgss3_ext/bitmap', '>= 1.0.0')
+  h.depend('iek/rgss3_ext/font', '>= 1.0.0')
+  h.depend('iek/text', '>= 1.0.0')
 end
 
 class Scene_MenuBase
@@ -28,7 +28,7 @@ class Scene_MenuBase
   end
 
   def header_string
-    "Menu Base"
+    'Menu Base'
   end
 
   def create_header

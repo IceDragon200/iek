@@ -6,7 +6,8 @@
 #   This is a minimal implementation of JSON in pure ruby.
 #   It worked for me, so your mileage may vary.
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-#//$simport.r("micro_json", "1.0.0", "Minimal implementation of JSON")
+$simport.r('iek/micro_json', '1.0.0', 'Minimal implementation of JSON')
+
 module MicroJSON
   def self.dump(o)
     dump_obj = lambda do |obj|

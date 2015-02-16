@@ -1,3 +1,5 @@
+$simport.r('iek/sprite_icon', '1.0.0', 'Generic Sprite for IconSet')
+
 # There are plenty of situations where you need a simple Sprite_Icon class
 class Sprite_Icon < Sprite_Base
   ##
@@ -7,7 +9,7 @@ class Sprite_Icon < Sprite_Base
   ##
   # @param [Viewport] viewport
   # @param [Integer] icon_index
-  def initialize(viewport=nil, icon_index=0)
+  def initialize(viewport = nil, icon_index = 0)
     super(viewport)
     self.icon_index = icon_index
   end
@@ -15,7 +17,7 @@ class Sprite_Icon < Sprite_Base
   ##
   # @return [Bitmap] the iconset bitmap
   def iconset_bitmap
-    Cache.system("IconSet")
+    Cache.system('IconSet')
   end
 
   ##

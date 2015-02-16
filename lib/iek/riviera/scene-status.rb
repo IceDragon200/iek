@@ -1,3 +1,7 @@
+$simport.r('iek/riviera/scene/status', '1.0.0', 'Riviera styled Status Menu') do |h|
+  h.depend('iek/riviera/scene/menu_base', '>= 1.0.0')
+end
+
 class Scene_Status
   def start
     super
@@ -22,6 +26,6 @@ class Scene_Status
   end
 
   def header_string
-    "Status"
+    'Status'
   end
 end

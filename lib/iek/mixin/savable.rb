@@ -1,4 +1,4 @@
-$simport.r("iek/savable", "1.0.0", "Interface for custom savable objects")
+$simport.r('iek/savable', '1.0.0', 'Interface for custom savable objects')
 
 module Mixin
   module Savable

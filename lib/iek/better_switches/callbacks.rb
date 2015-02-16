@@ -1,5 +1,5 @@
-$simport.r('better_switches/callbacks', '1.0.0', 'Utilizes iek callbacks for better_switches') do |h|
-  h.depend('better_switches', '>= 1.0.0')
+$simport.r('iek/better_switches/callbacks', '1.0.0', 'Utilizes iek callbacks for better_switches') do |h|
+  h.depend('iek/better_switches', '>= 1.0.0')
   h.depend!('iek/callbacks', '>= 1.0.0')
 end
 

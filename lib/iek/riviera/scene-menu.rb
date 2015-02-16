@@ -1,3 +1,7 @@
+$simport.r('iek/riviera/scene/menu', '1.0.0', 'Riviera styled Main Menu') do |h|
+  h.depend('iek/riviera/scene/menu_base', '>= 1.0.0')
+end
+
 class Scene_Menu
   def create_command_window
     @command_window = Window_MenuCommand.new
@@ -24,6 +28,6 @@ class Scene_Menu
   end
 
   def header_string
-    "Menu"
+    'Menu'
   end
 end

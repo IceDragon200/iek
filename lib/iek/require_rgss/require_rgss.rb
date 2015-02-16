@@ -11,9 +11,12 @@ def top_binding
 end
 
 module RequireRGSS
-  def self.load(name, options={})
+  def self.load(name, options = {})
     if data = $RGSS_SCRIPTS[name]
-      eval(data[2], top_binding, name, 1)
+      $rrgss_options = options
+      result = eval(data[2], top_binding, name, 1)
+      $rrgss_options = nil
+      result
     else
       raise LoadError, "RGSS_SCRIPT #{name} does not exists"
     end
@@ -21,9 +24,9 @@ module RequireRGSS
 end
 
 module Kernel
-  def vixen_require(name, options={})
+  def vaxle_require(name, options = {})
     RequireRGSS.load(name, options)
   end
 
-  alias :require_rgss :vixen_require
+  alias :require_rgss :vaxle_require
 end

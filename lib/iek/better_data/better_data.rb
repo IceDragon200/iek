@@ -1,4 +1,4 @@
-$simport.r('better_data', '1.0.0', 'exposes more functionality for DataManager')
+$simport.r('iek/better_data', '1.0.0', 'exposes more functionality for DataManager')
 
 module DataManager
   def self.use_normal_database_for_battle?
@@ -25,11 +25,11 @@ module DataManager
     #
   end
 
-  def pre_create_game_objects
+  def self.pre_create_game_objects
     #
   end
 
-  def post_create_game_objects
+  def self.post_create_game_objects
     #
   end
 
@@ -84,8 +84,7 @@ module DataManager
   def self.create_user_game_objects
   end
 
-  def self.create_game_objects
-    pre_create_game_objects
+  def self.create_regular_game_objects
     $game_temp          = Game_Temp.new
     $game_system        = Game_System.new
     $game_timer         = Game_Timer.new
@@ -98,6 +97,11 @@ module DataManager
     $game_troop         = Game_Troop.new
     $game_map           = Game_Map.new
     $game_player        = Game_Player.new
+  end
+
+  def self.create_game_objects
+    pre_create_game_objects
+    create_regular_game_objects
     create_user_game_objects
     post_create_game_objects
   end

@@ -1,4 +1,4 @@
-$simport.depend!("map_manager", ">= 1.0.0")
+$simport.depend!('map_manager', '>= 1.0.0')
 
 class Game_Map
   ##

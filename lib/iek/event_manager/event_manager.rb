@@ -1,5 +1,5 @@
-$import.r("event_manager", "1.0.0", "Provides a Event import interface") do |h|
-  h.depend("map_manager", ">= 1.0.0")
+$import.r('event_manager', '1.0.0', 'Provides a Event import interface') do |h|
+  h.depend('map_manager', '>= 1.0.0')
 end
 
 module EventManager

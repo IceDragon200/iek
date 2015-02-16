@@ -1,7 +1,7 @@
 class Window_Status
   attr_reader :actor
 
-  def initialize(actor, options={})
+  def initialize(actor, options = {})
     if rect = options[:rect]
       x, y, w, h = *rect
     else

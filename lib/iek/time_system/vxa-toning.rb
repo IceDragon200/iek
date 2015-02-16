@@ -1,5 +1,5 @@
-$simport.r("iek/time_system/toning", "1.0.0", "IEK TimeSystem Toning Implementation for VXA") do |h|
-  h.depend("iek/time_system")
+$simport.r('iek/time_system/toning', '1.0.0', 'IEK TimeSystem Toning Implementation for VXA') do |h|
+  h.depend('iek/time_system')
 end
 
 module IEK

@@ -1,8 +1,4 @@
 module Cache
-  remove_const :GFX_ROOT
-
-  GFX_ROOT = 'Graphics'
-
   ### loaders
   new_loader :animation,   'Animations'
   new_loader :battleback1, 'Battlebacks1'

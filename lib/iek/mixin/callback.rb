@@ -1,4 +1,4 @@
-$simport.r("iek/callbacks", "1.0.0", "A simple mixin module for adding Callbacks to an object")
+$simport.r('iek/callbacks', '1.0.0', 'A simple mixin module for adding Callbacks to an object')
 
 module Mixin
   module Callback
@@ -11,11 +11,10 @@ module Mixin
     end
 
     ## ~new-method
-    # add_callback(Symbol symbol, Proc func)
     # add_callback(Symbol symbol) { |*args, &block|  }
-    def add_callback(symbol, func=nil, &block)
+    def add_callback(symbol, &block)
       init_callbacks unless @callbacks
-      (@callbacks[symbol] ||= []).push(func || block)
+      (@callbacks[symbol] ||= []).push(block)
       @callback_log.puts "[#{self.class} add_callback] : #{symbol}" if @callback_log
     end
 
@@ -30,7 +29,7 @@ module Mixin
     # call_callback(Symbol symbol, *args, &block)
     def call_callback(symbol, *args, &block)
       init_callbacks unless @callbacks
-      @callbacks[symbol].each { |func| func.(*args, &block) }
+      @callbacks[symbol].each { |func| func.call(*args, &block) }
       @callback_log.puts "[#{self.class} call_callback] : #{symbol}" if @callback_log
     end
 

@@ -1,5 +1,5 @@
-$simport.r("iek/frame_scheduler/scheduler_host", "1.0.0", "Scheduler Mixin") do |h|
-  h.depend("iek/frame_scheduler", ">= 1.0.0")
+$simport.r('iek/frame_scheduler/scheduler_host', '1.0.0', 'Scheduler Mixin') do |h|
+  h.depend('iek/frame_scheduler', '>= 1.0.0')
 end
 
 class FrameScheduler

@@ -16,42 +16,47 @@ end
 module Moon
   module Test
     module Assert
+      # just a varitaion of assert_equal
+      def assert_equal_default(expected, actual)
+        assert_equal(expected, actual, "expected #{expected.inspect} as default, but actual is #{actual.inspect}.")
+      end
+
       # Checks if the object was disposed
       def assert_disposed(obj, msg = nil)
-        assert_true(obj.disposed?, msg || "expected #{obj} to be disposed.")
+        assert_true(obj.disposed?, msg || "expected #{obj.inspect} to be disposed.")
       end
 
       # @param [Array<Integer>[4], Color] c1
       # @param [Color] c2
-      def assert_equal_color(c1, c2)
+      def assert_equal_color(c1, c2, msg = nil)
         c1 = [c1.red, c1.green, c1.blue, c1.alpha] unless c1.is_a?(Array)
         assert_kind_of(Color, c2)
-        assert_equal(c1[0], c2.red,   "expected red to equal #{c1[0]} (but got #{c2.red})")
-        assert_equal(c1[1], c2.green, "expected green to equal #{c1[1]} (but got #{c2.green})")
-        assert_equal(c1[2], c2.blue,  "expected blue to equal #{c1[2]} (but got #{c2.blue})")
-        assert_equal(c1[3], c2.alpha, "expected alpha to equal #{c1[3]} (but got #{c2.alpha})")
+        assert_equal(c1[0], c2.red,   "expected red to equal #{c1[0].inspect} (but got #{c2.red.inspect})")
+        assert_equal(c1[1], c2.green, "expected green to equal #{c1[1].inspect} (but got #{c2.green.inspect})")
+        assert_equal(c1[2], c2.blue,  "expected blue to equal #{c1[2].inspect} (but got #{c2.blue.inspect})")
+        assert_equal(c1[3], c2.alpha, "expected alpha to equal #{c1[3].inspect} (but got #{c2.alpha.inspect})")
       end
 
       # @param [Array<Integer>[4], Tone] c1
       # @param [Tone] c2
-      def assert_equal_tone(t1, t2)
+      def assert_equal_tone(t1, t2, msg = nil)
         t1 = [t1.red, t1.green, t1.blue, t1.gray] unless t1.is_a?(Array)
         assert_kind_of(Tone, t2)
-        assert_equal(t1[0], t2.red,   "expected red to equal #{t1[0]} (but got #{t2.red})")
-        assert_equal(t1[1], t2.green, "expected green to equal #{t1[1]} (but got #{t2.green})")
-        assert_equal(t1[2], t2.blue,  "expected blue to equal #{t1[2]} (but got #{t2.blue})")
-        assert_equal(t1[3], t2.gray,  "expected gray to equal #{t1[3]} (but got #{t2.gray})")
+        assert_equal(t1[0], t2.red,   "expected red to equal #{t1[0].inspect} (but got #{t2.red.inspect})")
+        assert_equal(t1[1], t2.green, "expected green to equal #{t1[1].inspect} (but got #{t2.green.inspect})")
+        assert_equal(t1[2], t2.blue,  "expected blue to equal #{t1[2].inspect} (but got #{t2.blue.inspect})")
+        assert_equal(t1[3], t2.gray,  "expected gray to equal #{t1[3].inspect} (but got #{t2.gray.inspect})")
       end
 
       # @param [Array<Integer>[4], Rect]
       # @param [Rect]
-      def assert_equal_rect(r1, r2)
+      def assert_equal_rect(r1, r2, msg = nil)
         r1 = [r1.x, r1.y, r1.width, r1.height] unless r1.is_a?(Array)
         assert_kind_of(Rect, r2)
-        assert_equal(r1[0], r2.x,      "expected x to equal #{r1[0]} (but got #{r2.x})")
-        assert_equal(r1[1], r2.y,      "expected y to equal #{r1[1]} (but got #{r2.y})")
-        assert_equal(r1[2], r2.width,  "expected width to equal #{r1[2]} (but got #{r2.width})")
-        assert_equal(r1[3], r2.height, "expected height to equal #{r1[3]} (but got #{r2.height})")
+        assert_equal(r1[0], r2.x,      "expected x to equal #{r1[0].inspect} (but got #{r2.x.inspect})")
+        assert_equal(r1[1], r2.y,      "expected y to equal #{r1[1].inspect} (but got #{r2.y.inspect})")
+        assert_equal(r1[2], r2.width,  "expected width to equal #{r1[2].inspect} (but got #{r2.width.inspect})")
+        assert_equal(r1[3], r2.height, "expected height to equal #{r1[3].inspect} (but got #{r2.height.inspect})")
       end
     end
   end
@@ -73,7 +78,7 @@ class RGSS3Spec
         begin
           object.dispose
         rescue => ex
-          @log.error "Disposal of #{object} failed with #{ex.inspect}"
+          @log.error "Disposal of #{object.inspect} failed with #{ex.inspect}"
         end
       end
     end
@@ -911,6 +916,18 @@ class RGSS3Spec
             end
           end
 
+          s.context '#visible' do
+            it 'should have a visible' do
+              auto_dispose(Plane.new) do |plane|
+                assert_equal_default(true, plane.visible)
+                plane.visible = false
+                assert_equal(false, plane.visible)
+                plane.visible = true
+                assert_equal(true, plane.visible)
+              end
+            end
+          end
+
           s.context '#z' do
             it 'should have a z' do
               auto_dispose(Plane.new) do |plane|
@@ -1108,6 +1125,22 @@ class RGSS3Spec
           assert_kind_of(Class, Sprite)
         end
 
+        s.context '#initialize' do
+          s.it 'should initialize without parameters' do
+            auto_dispose(Sprite.new) do |s|
+              assert_kind_of(Sprite, s)
+            end
+          end
+
+          s.it 'should take a Viewport as an optional argument' do
+            v = Viewport.new
+            auto_dispose(Sprite.new(v), v) do |s, viewport|
+              assert_kind_of(Sprite, s)
+              assert_equal(viewport, s.viewport)
+            end
+          end
+        end
+
         s.context '#dispose' do
           s.it 'should dispose the resource' do
             sprite = Sprite.new
@@ -1116,7 +1149,317 @@ class RGSS3Spec
           end
         end
 
+        s.context '#flash' do
+          s.it 'should flash a sprite given a color and duration' do
+            auto_dispose(Sprite.new) do |s|
+              c = Color.new(96, 0, 0, 196)
+              d = 40
+              s.flash(c, d)
+            end
+          end
+        end
+
+        s.context '#update' do
+          s.it 'should update the sprite' do
+            auto_dispose(Sprite.new) do |s|
+              s.update
+            end
+          end
+        end
+
+        s.context '#width' do
+          s.it 'should return the width of the sprite' do
+            auto_dispose(Sprite.new) do |s|
+              assert_equal_default(0, s.width)
+              s.src_rect.set(0, 0, 32, 0)
+              assert_equal(32, s.width)
+            end
+          end
+        end
+
+        s.context '#height' do
+          s.it 'should return the height of the sprite' do
+            auto_dispose(Sprite.new) do |s|
+              assert_equal_default(0, s.height)
+              s.src_rect.set(0, 0, 0, 32)
+              assert_equal(32, s.height)
+            end
+          end
+        end
+
         s.context 'Properties' do
+          s.context '#bitmap' do
+            it 'should have a bitmap' do
+              auto_dispose(Sprite.new, Bitmap.new(32, 32)) do |sprite, bitmap|
+                assert_equal_default(nil, sprite.bitmap)
+                sprite.bitmap = bitmap
+                assert_kind_of(Bitmap, sprite.bitmap)
+                assert_same(bitmap, sprite.bitmap)
+              end
+            end
+          end
+
+          s.context '#src_rect' do
+            it 'should have a src_rect' do
+              auto_dispose(Sprite.new, Bitmap.new(32, 32)) do |sprite, bmp|
+                assert_equal_rect([0, 0, 0, 0], sprite.src_rect, 'expected to default to empty Rect')
+                sprite.bitmap = bmp
+                assert_equal_rect([0, 0, 32, 32], sprite.src_rect)
+                rect = Rect.new(0, 0, 24, 24)
+                sprite.src_rect = rect
+                assert_kind_of(Rect, sprite.src_rect)
+                assert_same(rect, sprite.src_rect)
+              end
+            end
+          end
+
+          s.context '#viewport' do
+            it 'should have a viewport' do
+              auto_dispose(Sprite.new, Viewport.new) do |sprite, viewport|
+                assert_equal_default(nil, sprite.viewport)
+                sprite.viewport = viewport
+                assert_kind_of(Viewport, sprite.viewport)
+                assert_same(viewport, sprite.viewport)
+              end
+            end
+          end
+
+          s.context '#visible' do
+            it 'should have a visible' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(true, sprite.visible)
+                sprite.visible = false
+                assert_equal(false, sprite.visible)
+                sprite.visible = true
+                assert_equal(true, sprite.visible)
+              end
+            end
+          end
+
+          s.context '#x' do
+            it 'should have a x' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Integer, sprite.x)
+                assert_equal_default(0, sprite.x)
+                sprite.x = 12
+                assert_equal(12, sprite.x)
+              end
+            end
+          end
+
+          s.context '#y' do
+            it 'should have a y' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Integer, sprite.y)
+                assert_equal_default(0, sprite.y)
+                sprite.y = 12
+                assert_equal(12, sprite.y)
+              end
+            end
+          end
+
+          s.context '#z' do
+            it 'should have a z' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Integer, sprite.z)
+                assert_equal_default(0, sprite.z)
+                sprite.z = 12
+                assert_equal(12, sprite.z)
+              end
+            end
+          end
+
+          s.context '#ox' do
+            it 'should have a ox' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Integer, sprite.ox)
+                assert_equal_default(0, sprite.ox)
+                sprite.ox = 12
+                assert_equal(12, sprite.ox)
+              end
+            end
+          end
+
+          s.context '#oy' do
+            it 'should have a oy' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Integer, sprite.oy)
+                assert_equal_default(0, sprite.oy)
+                sprite.oy = 12
+                assert_equal(12, sprite.oy)
+              end
+            end
+          end
+
+          s.context '#zoom_x' do
+            it 'should have a zoom_x' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Float, sprite.zoom_x)
+                assert_equal_default(1.0, sprite.zoom_x)
+                sprite.zoom_x = 4
+                assert_float(4.0, sprite.zoom_x)
+              end
+            end
+          end
+
+          s.context '#zoom_y' do
+            it 'should have a zoom_y' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Float, sprite.zoom_y)
+                assert_equal_default(1.0, sprite.zoom_y)
+                sprite.zoom_y = 3
+                assert_float(3.0, sprite.zoom_y)
+              end
+            end
+          end
+
+          s.context '#angle' do
+            it 'should have an angle' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(0, sprite.angle)
+                sprite.angle = 90
+                assert_equal(90, sprite.angle)
+                sprite.angle = 370
+                assert_equal(370, sprite.angle)
+              end
+            end
+          end
+
+          s.context '#wave_amp' do
+            it 'should have a wave_amp' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(0, sprite.wave_amp)
+                sprite.wave_amp = 90
+                assert_equal(90, sprite.wave_amp)
+                sprite.wave_amp = 370
+                assert_equal(370, sprite.wave_amp)
+              end
+            end
+          end
+
+          s.context '#wave_length' do
+            it 'should have a wave_length' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(180, sprite.wave_length)
+                sprite.wave_length = 90
+                assert_equal(90, sprite.wave_length)
+                sprite.wave_length = 370
+                assert_equal(370, sprite.wave_length)
+              end
+            end
+          end
+
+          s.context '#wave_speed' do
+            it 'should have a wave_speed' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(360, sprite.wave_speed)
+                sprite.wave_speed = 90
+                assert_equal(90, sprite.wave_speed)
+                sprite.wave_speed = 370
+                assert_equal(370, sprite.wave_speed)
+              end
+            end
+          end
+
+          s.context '#wave_phase' do
+            it 'should have a wave_phase' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(0, sprite.wave_phase)
+                sprite.wave_phase = 90
+                assert_equal(90, sprite.wave_phase)
+                sprite.wave_phase = 370
+                assert_equal(10, sprite.wave_phase, 'expected 370 to be rounded to 10')
+              end
+            end
+          end
+
+          s.context '#mirror' do
+            it 'should have a mirror' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(false, sprite.mirror)
+                sprite.mirror = false
+                assert_equal(false, sprite.mirror)
+                sprite.mirror = true
+                assert_equal(true, sprite.mirror)
+              end
+            end
+          end
+
+          s.context '#bush_depth' do
+            it 'should have a bush_depth' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(0, sprite.bush_depth)
+                sprite.bush_depth = 12
+                assert_equal(12, sprite.bush_depth)
+              end
+            end
+          end
+
+          s.context '#bush_opacity' do
+            it 'should have a bush_opacity' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal_default(0, sprite.bush_opacity)
+                sprite.bush_opacity = 195
+                assert_equal(195, sprite.bush_opacity)
+                sprite.bush_opacity = -23
+                assert_equal(0, sprite.bush_opacity, "expected value(#{sprite.bush_opacity}) to be clamped to 0")
+                sprite.bush_opacity = 265
+                assert_equal(255, sprite.bush_opacity, "expected value(#{sprite.bush_opacity}) to be clamped to 255")
+              end
+            end
+          end
+
+          s.context '#opacity' do
+            it 'should have an opacity' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal(255, sprite.opacity)
+                sprite.opacity = 12
+                assert_equal(12, sprite.opacity)
+                sprite.opacity = -78
+                assert_equal(0, sprite.opacity, "expected value(#{sprite.opacity}) to be clamped to 0")
+                sprite.opacity = 289
+                assert_equal(255, sprite.opacity, "expected value(#{sprite.opacity}) to be clamped to 255")
+              end
+            end
+          end
+
+          s.context '#blend_type' do
+            it 'should have a blend_type' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_equal(0, sprite.blend_type)
+                sprite.blend_type = 1
+                assert_equal(1, sprite.blend_type)
+              end
+            end
+          end
+
+          s.context '#color' do
+            it 'should have a color' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Color, sprite.color)
+                assert_equal_color([0, 0, 0, 0], sprite.color)
+                color = Color.new(32, 32, 32, 96)
+                sprite.color = color
+                assert_kind_of(Color, sprite.color)
+                assert_equal_color([32, 32, 32, 96], sprite.color)
+                assert_same(color, sprite.color)
+              end
+            end
+          end
+
+          s.context '#tone' do
+            it 'should have a tone' do
+              auto_dispose(Sprite.new) do |sprite|
+                assert_kind_of(Tone, sprite.tone)
+                assert_equal_tone([0, 0, 0, 0], sprite.tone)
+                tone = Tone.new(32, -96, 3, 24)
+                sprite.tone = tone
+                assert_kind_of(Tone, sprite.tone)
+                assert_equal_tone([32, -96, 3, 24], sprite.tone)
+                assert_same(tone, sprite.tone)
+              end
+            end
+          end
         end
       end
     end
@@ -1127,6 +1470,188 @@ class RGSS3Spec
           assert_const_defined(:Table)
           assert_kind_of(Class, Table)
         end
+
+        s.context '1D' do
+          s.context '#initialize' do
+            s.it 'should initialize given 1 dimension' do
+              t = Table.new(24)
+              assert_equal(24, t.xsize)
+            end
+          end
+
+          s.context '#resize' do
+            s.it 'should resize a table and preserve data' do
+              t = Table.new(24)
+              24.times { |i| t[i] = 23 - i }
+              t.resize(32)
+              assert_true(24.times.all? { |i| t[i] == (23 - i) })
+              t.resize(16)
+              assert_true(16.times.all? { |i| t[i] == (23 - i) })
+            end
+          end
+
+          s.context '#[] and #[]=' do
+            s.it 'should access a value at index' do
+              t = Table.new(24)
+              assert_equal(0, t[0])
+              assert_equal(0, t[23])
+              t[0] = 4
+              assert_equal(4, t[0])
+              t[23] = 8
+              assert_equal(8, t[23])
+            end
+
+            s.it 'should fail when accessing dimensions not initialized with' do
+              t = Table.new(24)
+              assert_raise ArgumentError do
+                t[0, 0]
+              end
+
+              assert_raise ArgumentError do
+                t[0, 0, 0]
+              end
+            end
+          end
+        end # 1D
+
+        s.context '2D' do
+          s.context '#initialize' do
+            s.it 'should initialize given 1 dimension' do
+              t = Table.new(24, 16)
+              assert_equal(24, t.xsize)
+              assert_equal(16, t.ysize)
+            end
+          end
+
+          s.context '#resize' do
+            s.it 'should resize a table and preserve data' do
+              t = Table.new(24, 16)
+              16.times do |y|
+                24.times do |x|
+                  t[x, y] = x + y * 24
+                end
+              end
+              t.resize(32, 24)
+              assert_true(begin
+                v = true
+                16.times do |y|
+                  24.times do |x|
+                    v = t[x, y] == x + y * 24
+                    break unless v
+                  end
+                end
+                v
+              end)
+              t.resize(16, 8)
+              assert_true(begin
+                v = true
+                8.times do |y|
+                  16.times do |x|
+                    v = t[x, y] == x + y * 24
+                    break unless v
+                  end
+                end
+                v
+              end)
+            end
+          end
+
+          s.context '#[] and #[]=' do
+            s.it 'should access a value at index' do
+              t = Table.new(24, 16)
+              assert_equal(0, t[0, 0])
+              assert_equal(0, t[23, 15])
+              t[0, 0] = 4
+              assert_equal(4, t[0, 0])
+              t[23, 15] = 8
+              assert_equal(8, t[23, 15])
+            end
+          end
+
+          s.it 'should fail when accessing dimensions not initialized with' do
+            t = Table.new(24, 16)
+            assert_raise ArgumentError do
+              t[0]
+            end
+
+            assert_raise ArgumentError do
+              t[0, 0, 0]
+            end
+          end
+        end # 2D
+
+        s.context '3D' do
+          s.context '#initialize' do
+            s.it 'should initialize given 1 dimension' do
+              t = Table.new(24, 16, 8)
+              assert_equal(24, t.xsize)
+              assert_equal(16, t.ysize)
+              assert_equal(8, t.zsize)
+            end
+          end
+
+          s.context '#resize' do
+            s.it 'should resize a table and preserve data' do
+              t = Table.new(24, 16, 8)
+              8.times do |z|
+                16.times do |y|
+                  24.times do |x|
+                    t[x, y, z] = x + y * 24 + z * 24 * 16
+                  end
+                end
+              end
+              t.resize(32, 24, 16)
+              assert_true(begin
+                v = true
+                8.times do |z|
+                  16.times do |y|
+                    24.times do |x|
+                      v = t[x, y, z] == x + y * 24 + z * 24 * 16
+                      break unless v
+                    end
+                  end
+                end
+                v
+              end)
+              t.resize(16, 8, 4)
+              assert_true(begin
+                v = true
+                4.times do |z|
+                  8.times do |y|
+                    16.times do |x|
+                      v = t[x, y, z] == x + y * 24 + z * 24 * 16
+                      break unless v
+                    end
+                  end
+                end
+                v
+              end)
+            end
+          end
+
+          s.context '#[] and #[]=' do
+            s.it 'should access a value at index' do
+              t = Table.new(24, 16, 8)
+              assert_equal(0, t[0, 0, 0])
+              assert_equal(0, t[23, 15, 7])
+              t[0, 0, 0] = 4
+              assert_equal(4, t[0, 0, 0])
+              t[23, 15, 7] = 8
+              assert_equal(8, t[23, 15, 7])
+            end
+          end
+
+          s.it 'should fail when accessing dimensions not initialized with' do
+            t = Table.new(24, 16, 8)
+            assert_raise ArgumentError do
+              t[0]
+            end
+
+            assert_raise ArgumentError do
+              t[0, 0]
+            end
+          end
+        end # 3D
       end
     end
 

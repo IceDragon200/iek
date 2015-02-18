@@ -59,4 +59,10 @@ class Sprite
     dispose_bitmap_safe
     dispose
   end
+
+  alias :unclamped_bush_opacity= :bush_opacity=
+  # Bugfix for bush_opacity not being clamped between 0 and 255
+  def bush_opacity=(opacity)
+    self.unclamped_bush_opacity = [[0, opacity].max, 255].min
+  end
 end

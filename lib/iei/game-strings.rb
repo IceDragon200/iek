@@ -18,7 +18,7 @@
 #-skip 1
 =end
 #-inject gen_script_header_tail
-($imported||={})['IEI::Game::Strings'] = 0x10000
+$simport.r 'iei/game_strings', '1.0.0', 'IEI Loginix'
 #-inject gen_module_header 'DataManager'
 class << DataManager
 
@@ -48,7 +48,6 @@ end
 
 #-inject gen_class_header 'Game::Strings'
 class Game::Strings
-
   def initialize
     @data = Array.new
   end
@@ -60,8 +59,5 @@ class Game::Strings
   def []=(id, v)
     @data[id] = v
   end
-
-  include IEI::Tracker if $imported['IEI::Tracker']
-
 end
 #-inject gen_script_footer

@@ -1,4 +1,4 @@
-$simport.r('iek/cache_awesome', '1.0.0', 'Improves the functionality of default Cache')
+$simport.r 'iek/cache_awesome', '1.0.0', 'Improves the functionality of default Cache'
 
 ### prepare for loading the new cache module
 Object.send(:remove_const, :Cache) if Object.constants.include?(:Cache)

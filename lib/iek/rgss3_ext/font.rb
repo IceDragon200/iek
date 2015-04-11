@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/font', '1.0.0', 'Extends Font Class')
+$simport.r 'iek/rgss3_ext/font', '1.0.0', 'Extends Font Class'
 
 class Font
   alias :org_initialize :initialize

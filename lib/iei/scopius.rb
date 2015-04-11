@@ -5,17 +5,18 @@
 #-define HDR_GAUT :author=>"IceDragon"
 #-define HDR_VER :version=>"1.0"
 #-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-($imported||={})['IEI::Scopius'] = 0x10000
+$simport.r 'iei/scopius', '1.0.0', 'IEI Loginix'
 #-inject gen_class_header 'RPG::UsableItem::Scope'
 class RPG::UsableItem
   class Scope
     class Filter
-      def initialize code, *params
+      def initialize(code, *params)
         @code, @params = code, params
       end
       attr_accessor :code
       attr_accessor :params
     end
+
     module Constants
       # // Standard
       CODE_NONE     = 0
@@ -47,35 +48,35 @@ class RPG::UsableItem
     def self.quick_scope(n)
       case n
       when :everyone
-        new(CODE_EVERYONE,FILTER_ALIVE,SCOPE_SINGLE)
+        new CODE_EVERYONE, FILTER_ALIVE, SCOPE_SINGLE
       end
     end
 
     def self.[](code)
       case code
       when 0
-        new(CODE_NONE)
+        new CODE_NONE
       # // One Enemy
       when 1
-        new(CODE_OPPONENTS,FILTER_ALIVE,SCOPE_SINGLE)
+        new CODE_OPPONENTS, FILTER_ALIVE, SCOPE_SINGLE
       # // All Enemies
       when 2
-        new(CODE_OPPONENTS,FILTER_ALIVE,SCOPE_ALL)
+        new CODE_OPPONENTS, FILTER_ALIVE, SCOPE_ALL
       # // Random Enemies
       when 3, 4, 5, 6
-        new(CODE_OPPONENTS,FILTER_ALIVE,SCOPE_RANDOM,code-2)
+        new CODE_OPPONENTS, FILTER_ALIVE, SCOPE_RANDOM, code - 2
       when 7
-        new(CODE_FRIENDS  ,FILTER_ALIVE,SCOPE_SINGLE)
+        new CODE_FRIENDS, FILTER_ALIVE, SCOPE_SINGLE
       when 8
-        new(CODE_FRIENDS  ,FILTER_ALIVE,SCOPE_ALL)
+        new CODE_FRIENDS, FILTER_ALIVE, SCOPE_ALL
       when 9
-        new(CODE_FRIENDS  ,FILTER_DEAD ,SCOPE_SINGLE)
+        new CODE_FRIENDS, FILTER_DEAD, SCOPE_SINGLE
       when 10
-        new(CODE_FRIENDS  ,FILTER_DEAD ,SCOPE_ALL)
+        new CODE_FRIENDS, FILTER_DEAD, SCOPE_ALL
       when 11
-        new(CODE_USER     ,FILTER_ANY  ,SCOPE_SINGLE)
+        new CODE_USER, FILTER_ANY, SCOPE_SINGLE
       else
-        new(code,0,0)
+        new code, 0, 0
       end
     end
 

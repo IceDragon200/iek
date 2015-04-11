@@ -1,3 +1,5 @@
+$simport.r 'iek/async', '1.0.0', 'Utitlity class for creating AsyncTasks'
+
 # Based on http://msdn.microsoft.com/en-us/library/vstudio/hh191443.aspx
 class AsyncTask
   # @return [Object]
@@ -12,6 +14,7 @@ class AsyncTask
 
   # Joins the internal Thread with the caller Thread to wait for its
   # execution, the object returned is the return of the block evaluated
+  #
   # @return [Object]
   def await
     @thread.join
@@ -19,6 +22,8 @@ class AsyncTask
   end
 
   # Checks if the internal Thread is #dead?
+  #
+  # @return [Boolean]
   def dead?
     @thread.dead?
   end
@@ -28,6 +33,7 @@ class Module
   # Converts the given method by method_name into a async method by
   # wrapping its execution in a AsyncTask
   # The original method can be acessed by calling (method_name)_no_async
+  #
   # @param [Symbol] method_name
   # @return [Symbol] The original method_name
   def async(method_name)

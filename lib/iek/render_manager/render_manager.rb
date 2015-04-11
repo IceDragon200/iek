@@ -1,4 +1,4 @@
-$simport.r('iek/render_manager', '1.0.0', 'AKA. Window Manager')
+$simport.r 'iek/render_manager', '1.0.0', 'AKA. Window Manager'
 
 class RenderManager
   include Enumerable

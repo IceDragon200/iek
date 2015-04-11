@@ -3,6 +3,8 @@
 # // 03/31/2012
 # // 04/01/2012
 # // IEI - Tagnik
+$simport.r 'iei/tagnik', '1.0.0', 'IEI Tagnik'
+
 module IEI
   class Tagnik
 

@@ -331,7 +331,7 @@ class Window_Message < Window_Selectable
     text.gsub!(/\\SKANI\[([\+\-]?\d+)[ ],[ ]([0-9]+)\]/i){ "\x83[#{$1}, #{$data_skills[$2.to_i].animation_id}]" }
 
     # // Pop Up
-    text.gsub!(/\\P\[([\+\-]?\d+)\]/i) {
+    text.gsub!(/\\P\[([\+\-]?\d+)\]/i) do
       id = $1.to_i
       case id
       when -1
@@ -341,7 +341,8 @@ class Window_Message < Window_Selectable
       end
       $game_variables[::IEO::EPSILON::VARIABLES[:overevent]] = eid ;
       $game_message.window_need_reset = true
-      "" }
+      ""
+    end
     # ----------------------------------------------------------------- #
     # // REGEX Complete
     # ----------------------------------------------------------------- #

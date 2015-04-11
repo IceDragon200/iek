@@ -5,6 +5,7 @@
   20/07/2012
   20/07/2012
 =end
+$simport.r 'iei/data_suite', '0.1.0', 'IEI Data Suite'
 #-inject gen_module_header 'IEI::DataSuiteEx'
 module IEI
   module DataSuiteEx
@@ -49,7 +50,7 @@ class IEI::DataSuiteEx::Base
     obj
   end
 
-  def enforce_size? 
+  def enforce_size?
     false
   end
 
@@ -100,7 +101,7 @@ class IEI::DataSuiteEx::Switches < IEI::DataSuiteEx::Base
 
   def _default
     0
-  end  
+  end
 
   def convert_key obj
     obj.to_i
@@ -117,7 +118,7 @@ class IEI::DataSuiteEx::SelfSwitches < IEI::DataSuiteEx::Base
 
   def initialize
     super do Hash.new end
-  end 
+  end
 
   def convert_key obj
     obj.to_s.downcase
@@ -134,7 +135,7 @@ class IEI::DataSuiteEx::MetaData < IEI::DataSuiteEx::Base
 
   def initialize
     super do Hash.new end
-  end 
+  end
 
   def convert_key obj
     obj.to_s
@@ -143,6 +144,6 @@ class IEI::DataSuiteEx::MetaData < IEI::DataSuiteEx::Base
   def convert_value obj
     obj.to_s
   end
-  
+
 end
 #-inject gen_script_footer

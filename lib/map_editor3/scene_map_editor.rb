@@ -8,16 +8,16 @@ module MapEditor3
       super
       @keyboard = Win32::Keyboard.new
       optz = MapDataOptimizer.new
-      optz.run($game_map.data)
+      optz.run $game_map.data
 
       @background = Sprite.new
       @background.bitmap = Bitmap.new(Graphics.width, 32)
-      @background.bitmap.fill(Color.new(255, 255, 255, 96))
+      @background.bitmap.fill Color.new(255, 255, 255, 96)
       @editor = Editor.new
       @editor.map = $game_map
       @editor.player = $game_player
       @editor.refresh
-      @editor.cursor.moveto($game_player.x, $game_player.y)
+      @editor.cursor.moveto $game_player.x, $game_player.y
       @map_cursor_controller = Game_CharacterController.new
       @map_cursor_controller.character = @editor.cursor
       @display = Rect.new(32 * 8, 32, Graphics.width, Graphics.height - 32)
@@ -28,9 +28,9 @@ module MapEditor3
 
       # underlying cameras need not be updated, as the parent cam will take
       # care of the tracking instead.
-      @player_camera = Game_CharacterCamera.new($game_player)
-      @cursor_camera = Game_CharacterCamera.new(@editor.cursor)
-      @camera = Game_FollowCamera.new(@cursor_camera)
+      @player_camera = Game_CharacterCamera.new $game_player
+      @cursor_camera = Game_CharacterCamera.new @editor.cursor
+      @camera = Game_FollowCamera.new @cursor_camera
       @camera.display = @display
       @camera.view = $game_map
       @camera.center_on_client
@@ -151,7 +151,7 @@ module MapEditor3
       super
       return return_scene if @keyboard.press?(:F10)
       @map_cursor_controller.update
-      @editor.update(true)
+      @editor.update true
       @camera.update
       $game_timer.update
       update_graphics

@@ -5,7 +5,7 @@
 #-define HDR_GAUT :author=>"IceDragon"
 #-define HDR_VER :version=>"0x01000"
 #-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-($imported||={})['IEI::NoteEval'] = 0x01000
+$simport.r 'iei/note_eval', '1.0.0', 'IEI Note Eval'
 #-inject gen_module_header 'IEI::NoteEval'
 #-inject gen_class_header 'RPG::BaseItem'
 class RPG::BaseItem

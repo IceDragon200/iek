@@ -1,3 +1,5 @@
+$simport.r 'iei/magic_equip', '1.0.0', 'IEI Magic Equip'
+
 module IEI
   module MagicEquip
 

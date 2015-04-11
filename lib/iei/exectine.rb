@@ -5,11 +5,10 @@
 #-define HDR_GAUT :author=>"IceDragon"
 #-define HDR_VER :version=>"1.0"
 #-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-($imported||={})['IEI::Exectine'] = 0x01000
+$simport.r 'iei/exectine', '0.1.0', 'IEI Exectine'
 #-inject gen_module_header 'IEI::Exectine'
 module IEI
   module Exectine
-
     module Constants
       EXC_NULL     = 0 # // No Skill Execution
       EXC_NORMAL   = 1 # // Normal MP/HP/TP
@@ -19,7 +18,6 @@ module IEI
     end
 
     module Include
-
       include Constants
 
       def pre_init_iei
@@ -49,9 +47,6 @@ module IEI
       def set_skill_charge(id, n)
         @skl_charges[id] = (@skl_charges[id] + n).clamp(0,100)
       end
-
     end
-
   end
-
 end

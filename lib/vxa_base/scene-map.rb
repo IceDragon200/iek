@@ -23,7 +23,7 @@ class Scene_Map < Scene_Base
   #--------------------------------------------------------------------------
   # * Execute Transition
   #    Performs a fade in when the screen has been blacked out, such as
-  #    immediately after a battle or load. 
+  #    immediately after a battle or load.
   #--------------------------------------------------------------------------
   def perform_transition
     if Graphics.brightness == 0
@@ -191,7 +191,7 @@ class Scene_Map < Scene_Base
   def call_menu
     Sound.play_ok
     SceneManager.call(Scene_Menu)
-    Window_MenuCommand::init_command_position
+    Window_MenuCommand.init_command_position
   end
   #--------------------------------------------------------------------------
   # * Determine if Debug Call by F9 key

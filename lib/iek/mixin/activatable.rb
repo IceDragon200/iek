@@ -1,3 +1,5 @@
+$simport.r 'iek/activatable', '1.0.0', 'Interface for custom activatable objects'
+
 module Activatable
   attr_accessor :active
 

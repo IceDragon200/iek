@@ -1,4 +1,4 @@
-$simport.r('iek/better_interpreter', '1.0.0', 'Improves on the existing interpter by wrapping globals in methods')
+$simport.r 'iek/better_interpreter', '1.0.0', 'Improves on the existing interpter by wrapping globals in methods'
 
 class Game_Interpreter
   def game_temp
@@ -837,6 +837,8 @@ class Game_Interpreter
       @index += 1
       script += @list[@index].parameters[0] + "\n"
     end
-    eval(script, self.send(:binding), "#{self.class}/script", @index)
+    name = 'script'
+    name = "map/#{@map_id}/event/#{@event_id}/page/script" if @event_id != 0
+    eval(script, self.send(:binding), name, @index)
   end
 end

@@ -146,17 +146,21 @@ class ScriptDep
       @dep.depend!(id, version) if @dep
     end
 
-    def conflict(id, version=nil)
+    def conflict(id, version = nil)
       @conflicts << Dependency.new(id, version)
     end
 
-    def conflict!(id, version=nil)
+    def conflict!(id, version = nil)
       conflict(id, version)
       @dep.conflict!(id, version) if @dep
     end
 
     def to_s
-      "#{id} [#{version}] : #{name} ~ #{description}"
+      if id != name
+        "#{id}(#{version}) #{name}: #{description}"
+      else
+        "#{id}(#{version}): #{description}"
+      end
     end
   end
 

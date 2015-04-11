@@ -1,6 +1,6 @@
-$simport.r('iek/better_data/callbacks', '1.0.0', 'Utilizes iek callbacks for better_data') do |h|
-  h.depend('iek/better_data', '>= 1.0.0')
-  h.depend!('iek/callbacks', '>= 1.0.0')
+$simport.r 'iek/better_data/callbacks', '1.0.0', 'Utilizes iek callbacks for better_data' do |h|
+  h.depend 'iek/better_data', '>= 1.0.0'
+  h.depend! 'iek/callbacks', '>= 1.0.0'
 end
 
 module DataManager

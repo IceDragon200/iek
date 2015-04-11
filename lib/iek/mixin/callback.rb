@@ -1,4 +1,4 @@
-$simport.r('iek/callbacks', '1.0.0', 'A simple mixin module for adding Callbacks to an object')
+$simport.r 'iek/callbacks', '1.0.0', 'A simple mixin module for adding Callbacks to an object'
 
 module Mixin
   module Callback

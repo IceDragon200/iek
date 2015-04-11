@@ -1,4 +1,4 @@
-($imported||={})['IEI::Elements'] = '1.0.0'
+$simport.r 'iei/elements', '1.0.0', 'IEI Elements'
 
 module IEI
   # >_> Nothing here to see. <_< Come on get going...

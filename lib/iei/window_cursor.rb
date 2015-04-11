@@ -11,7 +11,7 @@
 #   [06/04/2013] 1.1.0
 #     BUGFIX: Fixed cursor position with scrolling windows
 #
-
+$simport.r 'iei/window_cursor', '1.0.0', 'IEI Window Cursor'
 #-inject gen_module_header 'IEI'
 module IEI
   #-inject gen_module_header 'WindowCursor'
@@ -24,7 +24,7 @@ module IEI
     # Cursor WC_CURSOR
     WC_CURSOR = Cursor.new
     ## START CONFIG ##
-    WC_CURSOR.filename    = "win_cursor"
+    WC_CURSOR.filename    = 'win_cursor'
     WC_CURSOR.cell_count  = 3   # Number of frames or cells the animation has
     WC_CURSOR.cell_width  = nil # Width of 1 cell
     WC_CURSOR.cell_height = nil # Height of 1 cell

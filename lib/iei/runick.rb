@@ -8,8 +8,6 @@
 #-inject gen_script_header_wotail HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
 #-inject gen_spacer
 #-skip:
-require_relative 'core-item-syms.rb'
-SKPVERSION = 0x0800C
 =begin
 #-end:
 #-inject gen_script_des 'Requirements'
@@ -69,7 +67,7 @@ SKPVERSION = 0x0800C
 #-skip:
 =end
 #-end:
-($imported||={})["IEI::Runick"] = SKPVERSION
+$simport.r 'iei/runick', '0.8.0', 'IEI Runick'
 #-inject gen_module_header 'IEI::Runick'
 module IEI
   module Runick

@@ -8,7 +8,7 @@
 #-inject gen_script_header_wotail HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
 #-inject gen_spacer
 #-inject gen_script_header_tail
-($imported||={})['IEI::Statrix'] = 0x10000
+$simport.r 'iei/statrix', '1.0.0', 'IEI Statrix'
 #-inject gen_class_header 'IEI::Statrix'
 module IEI
   module Statrix

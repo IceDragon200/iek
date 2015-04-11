@@ -5,7 +5,10 @@
 #-define HDR_GAUT :author=>"IceDragon"
 #-define HDR_VER :version=>"1.0"
 #-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-($imported||={})['IEI::Exectine'] = 0x10000
+($imported||={})['IEI::MapCache'] = 0x10000
+
+$simport.r 'iei/uniq_maps', '0.1.0', 'IEI Unique Maps'
+
 #-inject gen_class_header 'IEI::CacheMapEx'
 module IEI
   class CacheMapEx
@@ -109,7 +112,6 @@ end
 
 #-inject gen_class_header 'Game::Interpreter'
 class Game::Interpreter
-
   def ex_variable(id)
     _map.excache.variables[id] = yield _map.excache.variables[id]
   end
@@ -122,6 +124,5 @@ class Game::Interpreter
     key = [map_id,event_id,switch_ch]
     _map.excache.self_switches[key] = yield _map.excache.self_switches[key]
   end
-
 end
 #-inject gen_script_footer

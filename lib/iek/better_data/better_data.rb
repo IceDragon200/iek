@@ -1,4 +1,4 @@
-$simport.r('iek/better_data', '1.0.0', 'exposes more functionality for DataManager')
+$simport.r 'iek/better_data', '1.0.0', 'exposes more functionality for DataManager'
 
 module DataManager
   def self.use_normal_database_for_battle?

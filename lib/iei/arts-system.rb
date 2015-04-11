@@ -1,4 +1,4 @@
-($imported||={})['IEI::ArtsSystem'] = '1.0.0'
+$simport.r 'iei/arts', '0.1.0', 'IEI Arts System'
 
 class IEI::Art < RPG::BaseItem
   def all_tags

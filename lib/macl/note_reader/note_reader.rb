@@ -78,9 +78,7 @@ module MACL #:nodoc:
     end
 
    public
-
     class << self
-
       attr_writer :default_types
       attr_writer :default_format
 
@@ -91,7 +89,6 @@ module MACL #:nodoc:
       def default_types
         @default_types || TYPES_DEFAULT
       end
-
     end
   end
 end

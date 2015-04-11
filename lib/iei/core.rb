@@ -1,4 +1,4 @@
-($imported||={})['IEI::Core'] = '1.0.1'
+$simport.r 'iei/core', '1.1.0', 'IEI Core'
 
 module IEI
   def self.debug

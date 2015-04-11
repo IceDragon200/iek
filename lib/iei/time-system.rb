@@ -5,7 +5,7 @@
 #-define HDR_GAUT :author=>"IceDragon"
 #-define HDR_VER :version=>"1.0"
 #-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-($imported||={})['IEI::TimeSystem'] = 0x10000
+$simport.r 'iei/time_system', '1.0.0', 'IEI Time System'
 #-inject gen_class_header 'IEI::TimeSystem'
 class IEI::TimeSystem
   FPS = 60.0

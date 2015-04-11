@@ -1,4 +1,4 @@
-$simport.r('iek/content_bitmap', '1.0.0', 'Bitmap subclass to differientiate Window contents.')
+$simport.r 'iek/content_bitmap', '1.0.0', 'Bitmap subclass to differientiate Window contents.'
 
 class Window_Base
   class ContentBitmap < Bitmap

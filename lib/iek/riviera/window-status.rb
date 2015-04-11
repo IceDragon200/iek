@@ -59,15 +59,15 @@ class Window_Status
     x = _cw * 8
     w = _cw * 4
     draw_text(x, y,       w, _ch, "STR:")
-    draw_text(x, y+_ch*1, w, _ch, "MGC:")
-    draw_text(x, y+_ch*2, w, _ch, "AGI:")
-    draw_text(x, y+_ch*3, w, _ch, "VIT:")
+    draw_text(x, y + _ch * 1, w, _ch, "MGC:")
+    draw_text(x, y + _ch * 2, w, _ch, "AGI:")
+    draw_text(x, y + _ch * 3, w, _ch, "VIT:")
     x += w
     w = _cw * 2
     draw_text(x, y,       w, _ch, actor.atk)
-    draw_text(x, y+_ch*1, w, _ch, actor.mat)
-    draw_text(x, y+_ch*2, w, _ch, actor.agi)
-    draw_text(x, y+_ch*3, w, _ch, actor.def)
+    draw_text(x, y + _ch * 1, w, _ch, actor.mat)
+    draw_text(x, y + _ch * 2, w, _ch, actor.agi)
+    draw_text(x, y + _ch * 3, w, _ch, actor.def)
 
     # HP Gauge
     x = _cw

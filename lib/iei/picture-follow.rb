@@ -9,6 +9,7 @@
 # //       0 - Current event
 # //       1 - every other event
 #-end:
+$simport.r 'iei/picture/follow', '1.0.0', 'IEI Picture Follow'
 #-inject gen_class_header 'Game::Picture'
 class Game::Picture
 

@@ -1,10 +1,10 @@
-$simport.r('iek/rgss3_ext/graphics', '1.0.0', 'Extension of the RGSS3 Graphics module')
+$simport.r 'iek/rgss3_ext/graphics', '1.0.0', 'Extension of the RGSS3 Graphics module'
 
 module Graphics
   ###
   # @return [Rect]
   def self.rect
-    Rect.new(0, 0, width, height)
+    Rect.new 0, 0, width, height
   end
 
   ###

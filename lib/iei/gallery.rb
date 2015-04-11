@@ -5,7 +5,7 @@
 #-define HDR_GAUT :author=>"IceDragon"
 #-define HDR_VER :version=>"1.0"
 #-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-($imported||={})["IEI::Gallery"] = 0x10000
+$simport.r 'iei/gallery', '1.0.0', 'IEI Loginix'
 #-include ASMxROOT . "/header/standalone_header.rb"
 #-inject gen_module_header "IEI::Gallery"
 module IEI
@@ -13,31 +13,39 @@ module IEI
     # // Do not modify
     class CG
       class << self
-        alias [] new
+        alias :[] :new
       end
       FUNC_TRUE   = proc { true }
       FUNC_SWITCH = proc { switch?(@switch_id) }
+
       attr_accessor :id, :name, :filenames, :switch_id
+
       def initialize id,name,filenames,switch_id=nil,&block
         @id,@name,@filenames,@switch_id = id,name,Array(filenames),switch_id
         init_condition &block
       end
+
       def size
         @filenames.size
       end
+
       def init_condition &block
         @condition = block_given? ? block : (@switch_id ? FUNC_SWITCH : FUNC_TRUE)
       end
+
       def switch? id
         $game.switches[id]
       end
+
       def condition_met?
         instance_exec &@condition #rescue true
       end
     end
     # // Edit Here
     @sets = {}
-    def self.sets ; @sets ; end
+    class << self
+      attr_reader :sets
+    end
     # // CG[id,"CG-Name","filename"]
     # // CG[id,"CG-Name","filename",switch_id]
     # // CG[id,"CG-Name",["filename","filename","filename"],switch_id]

@@ -1,6 +1,8 @@
 # // 02/22/2012
 # // 02/23/2012
 # // Icy Engine Iliks
+$simport.r 'iei/magic_learn', '1.0.0', 'IEI Magic Learn'
+
 module IEI
   module MagicLearn
     module MixIns ; end

@@ -1,3 +1,5 @@
+$simport.r 'iei/cache_constructor', '0.1.0', 'IEI Cache Constructor'
+
 #-inject gen_module_header 'IEI::CacheConstructor'
 module IEI
   module CacheConstructor

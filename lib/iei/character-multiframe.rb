@@ -20,7 +20,7 @@
      0 - Ping Pong, 1 - Forward, 2 - Reverse, 3 - Random
  --
 =end
-($imported||={})["IEI::CharacterMultiFrame"] = 0x01000
+$simport.r 'iei/multiframe', '1.0.0', 'IEI Multiframe'
 #-inject gen_class_header "Game_Character"
 class Game::Character
 

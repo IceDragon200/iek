@@ -1,4 +1,4 @@
-$simport.r('iek/better_variables', '1.0.0', 'Improves the functionality of default Game_Variables')
+$simport.r 'iek/better_variables', '1.0.0', 'Improves the functionality of default Game_Variables'
 
 class Game_Variables
   include Enumerable
@@ -20,7 +20,7 @@ class Game_Variables
 
   ##
   # on_change
-  def on_change(id)
+  def on_change(id, org, now)
     # variable set callback
     $game_map.need_refresh = true # default action
   end
@@ -28,19 +28,20 @@ class Game_Variables
   ##
   # [](Integer id)
   def [](id)
-    @data[id]
+    @data[id] || 0
   end
 
   ##
   # []=(Integer id, Integer n)
   def []=(id, n)
+    o = @data[id]
     @data[id] = n.to_i
-    on_change(id)
+    on_change id, o, @data[id]
   end
 
   ##
-  # on?(Integer id)
-  #   is the switch currently on?
+  # zero?(Integer id)
+  #   is the variable zero?
   def zero?(id)
     self[id] == 0
   end

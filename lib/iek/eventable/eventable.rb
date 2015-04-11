@@ -1,4 +1,4 @@
-$simport.r('iek/eventable', '1.0.0', 'Basic callbacks mixin')
+$simport.r 'iek/eventable', '1.0.0', 'Basic callbacks mixin'
 
 module IEK
   module Eventable

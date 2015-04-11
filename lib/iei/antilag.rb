@@ -1,11 +1,4 @@
-#-define HDR_TYP :type=>"class"
-#-define HDR_GNM :name=>"IEI - AntiLag"
-#-define HDR_GDC :dc=>"03/27/2012"
-#-define HDR_GDM :dm=>"05/26/2012"
-#-define HDR_GAUT :author=>"IceDragon"
-#-define HDR_VER :version=>"1.0"
-#-inject gen_script_header HDR_TYP, HDR_GNM, HDR_GAUT, HDR_GDC, HDR_GDM, HDR_VER
-($imported||={})['IEI::AntiLag'] = 0x01000
+$simport.r 'iei/anti_lag', '0.1.0', 'IEI Antilag utility'
 
 #-inject gen_module_header 'IEI::AntiLag'
 module IEI

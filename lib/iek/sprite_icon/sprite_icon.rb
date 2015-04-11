@@ -10,14 +10,18 @@ class Sprite_Icon < Sprite_Base
   # @param [Viewport] viewport
   # @param [Integer] icon_index
   def initialize(viewport = nil, icon_index = 0)
-    super(viewport)
+    super viewport
     self.icon_index = icon_index
   end
 
-  ##
+  # @param [String]
+  def iconset_name
+    'IconSet'
+  end
+
   # @return [Bitmap] the iconset bitmap
   def iconset_bitmap
-    Cache.system('IconSet')
+    Cache.system(iconset_name)
   end
 
   ##

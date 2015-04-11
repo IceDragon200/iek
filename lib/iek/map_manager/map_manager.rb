@@ -1,4 +1,4 @@
-$simport.r('map_manager', '1.0.0', 'Provides a Map management interface')
+$simport.r 'iek/map_manager', '1.0.0', 'Provides a Map management interface'
 
 module MapManager
   def self.load_file(filename)

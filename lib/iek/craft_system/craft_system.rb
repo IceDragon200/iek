@@ -1,4 +1,4 @@
-$simport.r('iek/craft_system', '1.0.0', 'Basic Craft System')
+$simport.r 'iek/craft_system', '1.0.0', 'Basic Craft System'
 
 module IEK
   module CraftSystem

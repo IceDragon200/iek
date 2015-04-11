@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/numeric', '1.0.0', 'Extends Numeric Class')
+$simport.r 'iek/rgss3_ext/numeric', '1.0.0', 'Extends Numeric Class'
 
 class Numeric
   ###

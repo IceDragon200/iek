@@ -1,4 +1,4 @@
-$simport.r('iek/better_switches', '1.0.0', 'Improves the functionality of default Game_Switches')
+$simport.r 'iek/better_switches', '1.0.0', 'Improves the functionality of default Game_Switches'
 
 class Game_Switches
   include Enumerable
@@ -15,12 +15,14 @@ class Game_Switches
   #
   def each
     return to_enum(__method__) unless block_given?
-    @data.each_with_index { |x, i| yield i, x }
+    @data.each_with_index do |x, i|
+      yield i, x
+    end
   end
 
   ##
   # on_change
-  def on_change(id)
+  def on_change(id, org, now)
     # switch set callback
     $game_map.need_refresh = true # default action
   end
@@ -28,14 +30,15 @@ class Game_Switches
   ##
   # [](Integer id)
   def [](id)
-    @data[id]
+    !!@data[id]
   end
 
   ##
   # []=(Integer id, Boolean n)
   def []=(id, n)
+    o = @data[id]
     @data[id] = !!n
-    on_change(id)
+    on_change id, o, @data[id]
   end
 
   ##

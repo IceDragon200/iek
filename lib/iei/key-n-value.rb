@@ -5,10 +5,9 @@
 #-define HDR_GAUT :author=>"IceDragon"
 #-define HDR_VER :version=>'0x01000'
 #-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-($imported||={})['IEI::KeyNValue'] = 0x01000
+$simport.r 'iei/key_and_value', '0.1.0', 'IEI Key and Value'
 #-inject gen_class_header 'RPG::BaseItem'
 class RPG::BaseItem
-
   def knv
     unless @knv
       str = "note[_ ]?knv"
@@ -20,6 +19,5 @@ class RPG::BaseItem
   end
 
   attr_writer :knv
-
 end
 #-inject gen_script_footer

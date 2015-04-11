@@ -1,12 +1,13 @@
 #-// 10/07/2012
 #-// 10/07/2012
+$simport.r 'iei/spritix', '1.0.0', 'IEI Spritix'
 #-inject gen_module_header 'IEI::Spritix'
 module IEI
   module Spritix
     @@spx_funcs = {}
     def self.add_spx sym,&func
       @@spx_funcs[sym] = func
-    end 
+    end
     add_spx :flip_horz do |sp,*params|
       tween_struct, = params
       tweener = tween_struct.to_tween(1.0,0.0)
@@ -25,14 +26,14 @@ module IEI
     add_spx :fade_out do |sp,*params|
       time, = params
       until sp.opacity <= 0
-        sp.opacity -= 255.0 / time 
+        sp.opacity -= 255.0 / time
         Fiber.yield
       end
     end
     add_spx :fade_in do |sp,*params|
       time, = params
       until sp.opacity >= 255
-        sp.opacity += 255.0 / time 
+        sp.opacity += 255.0 / time
         Fiber.yield
       end
     end
@@ -44,11 +45,11 @@ module IEI
     end
     def update_spritix
       @spritix.select! do |(fiber,params)|
-        begin 
-          fiber.resume self,params 
+        begin
+          fiber.resume self,params
           true
-        rescue 
-          false  
+        rescue
+          false
         end
       end
     end
@@ -59,7 +60,7 @@ module IEI
       @spritix.clear
     end
   end
-#-inject gen_module_header 'IEI::Shell::Spritix'  
+#-inject gen_module_header 'IEI::Shell::Spritix'
   module Shell ; end
   class Shell::Spritix
     include Spritix

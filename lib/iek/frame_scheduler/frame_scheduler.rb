@@ -1,5 +1,5 @@
-$simport.r('iek/frame_scheduler', '1.0.0', 'A frame based scehduler') do |h|
-  h.depend('iek/rgss3_ext/graphics', '>= 1.0.0')
+$simport.r 'iek/frame_scheduler', '1.0.0', 'A frame based scehduler' do |h|
+  h.depend 'iek/rgss3_ext/graphics', '>= 1.0.0'
 end
 
 class FrameScheduler

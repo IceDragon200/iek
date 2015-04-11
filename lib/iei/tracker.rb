@@ -1,17 +1,7 @@
 #-// 23/06/2012
 #-// 23/06/2012
 #-skip 1
-SKPVERSION=0x11000
-#-define SKPVERSION 0x11000
-#-define HDR_TYP :type=>"class"
-#-define HDR_GNM :name=>"IEI - Tracker"
-#-define HDR_GDC :dc=>"22/02/2012"
-#-define HDR_GDM :dm=>"20/07/2012"
-#-define HDR_GAUT :author=>"IceDragon"
-#-define HDR_VER :version=>"SKPVERSION"
-#-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-# // Heaven knows, I could have meta programmed this...
-($imported||={})['IEI::Tracker'] = SKPVERSION
+$simport.r 'iei/tracker', '1.0.0', 'IEI Tracker'
 #-inject gen_module_header 'IEI::Tracker'
 module IEI
   module Tracker

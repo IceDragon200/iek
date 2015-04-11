@@ -1,5 +1,7 @@
+$simport.r 'iek/taggable', '1.0.0', 'Interface for custom taggable objects'
+
 module Taggable
-  attr_accessor :tags
+  attr_writer :tags
 
   def tags
     @tags ||= []

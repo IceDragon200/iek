@@ -1,3 +1,5 @@
+$simport.r 'iei/emission', '0.1.0', 'IEI Emission'
+
 # [IEI]Cir.Kit.Tri
 module IEI
   module Emission

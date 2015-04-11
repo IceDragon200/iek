@@ -1,5 +1,5 @@
-$simport.r('iek/render_manager/vxa/scene-base', '1.0.0', 'RenderManager VXA SceneBase Integration') do |d|
-  d.depend('iek/render_manager', '~> 1.0')
+$simport.r 'iek/render_manager/vxa/scene-base', '1.0.0', 'RenderManager VXA SceneBase Integration' do |d|
+  d.depend 'iek/render_manager', '~> 1.0'
 end
 
 class Scene_Base

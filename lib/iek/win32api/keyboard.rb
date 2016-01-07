@@ -17,12 +17,20 @@ module Win32
     # Initialize Keyboard module
     def initialize
       @user32 = Win32::User32.new
-      @byte_array = "\0" * 256
+      clear_buffer
       @key_state = Array.new(256, false)
     end
 
-    ##
+    # Clears the internal byte buffer
+    #
+    # @return [self]
+    private def clear_buffer
+      @byte_array = "\0" * 256
+      self
+    end
+
     # Converts given obj to a valid VK key code
+    #
     # @overload convert_key(str)
     #   @param [String, Symbol] str Name of key
     #   @raise [KeyError] in case that the key cannot be found
@@ -33,13 +41,15 @@ module Win32
       case obj
       when String, Symbol then return SYMBOL_TO_KEY.fetch(obj.to_sym)
       when Integer        then return obj
-      else                     raise TypeError, "wrong argument type #{obj.class} (expected String, Symbol or Integer)"
+      else
+        raise TypeError,
+         "wrong argument type #{obj.class} (expected String, Symbol or Integer)"
       end
     end
     private :convert_key
 
-    ##
     # Checks whether or not the key was pressed?
+    #
     # @param [String, Symbol, Integer] obj
     # @return [Boolean]
     def press?(obj)
@@ -47,10 +57,11 @@ module Win32
       return @key_state[key]
     end
 
-    ##
     # Updates the @key_state Array by grabbing the values from the OS
+    #
     # @return [Boolean] Whether or not the array was updated sucessfully
     def update_key_state
+      clear_buffer
       if @user32.get_keyboard_state(@byte_array) > 0
         @byte_array.each_byte.each_with_index do |byte, i|
           @key_state[i] = (byte >> 7) == 1
@@ -60,8 +71,8 @@ module Win32
     end
     private :update_key_state
 
-    ##
     # Keyboard update function
+    #
     # @return [Void]
     def update
       update_key_state

@@ -6,7 +6,7 @@
 # ** Date Created  : 10/10/2010
 # ** Date Modified : 07/10/2011
 # ** Requested by  : Kyriaki
-# ** Vesrion       : 1.3
+# ** Vesrion       : 1.3.0
 #------------------------------------------------------------------------------#
 #==============================================================================#
 # **INTRODUCTION
@@ -59,7 +59,7 @@
 #  07/10/2011 V1.3  Improved window drawing. (Should load faster now)
 #
 #------------------------------------------------------------------------------#
-$imported = {} if $imported == nil
+$imported ||= {} if $imported == nil
 $imported["IEX_Scene_Equip_CMV"] = true
 #==============================================================================
 # ** IEX::COSMETIC_EQUIP

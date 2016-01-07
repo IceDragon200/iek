@@ -4,9 +4,9 @@
 # ** Created by    : IceDragon (http://www.rpgmakervx.net/)
 # ** Script-Status : ReWrite + Cosmetic + ALT (Shop)
 # ** Script Type   : Scene Shop
-# ** Date Created  : 10/26/2010
-# ** Date Modified : 01/26/2011
-# ** Version       : 2.0c ALT
+# ** Date Created  : 2010/10/26
+# ** Date Modified : 2010/12/08
+# ** Version       : 1.0.0.alt
 #------------------------------------------------------------------------------#
 #==============================================================================#
 # **INTRODUCTION
@@ -19,9 +19,18 @@
 #                                                 window skin)
 #------------------------------------------------------------------------------#
 #==============================================================================#
-# ** HOW TO USE
+# **CHANGES
 #------------------------------------------------------------------------------#
-# Plug 'N' Play (or/and) Small Config
+# ** Scene_Shop
+#    Overwriten
+#      initialize
+#      update
+#      terminate
+#
+#------------------------------------------------------------------------------#
+#==============================================================================#
+# **FEATURES
+#------------------------------------------------------------------------------#
 # ** Custom Shop name and icon
 #      Do a script call with the following (Before shop processing)
 #      set_custom_shop_name("name")
@@ -37,60 +46,17 @@
 #
 #------------------------------------------------------------------------------#
 #==============================================================================#
-# ** INSTALLATION
-#------------------------------------------------------------------------------#
-#
-# Below
-#  Materials
-#
-# Above
-#   Main
-#
-#------------------------------------------------------------------------------#
-#==============================================================================#
-# ** CHANGES
-#------------------------------------------------------------------------------#
-# Classes
-#   RPG::BaseItem
-#     new-method :sscmv_cache
-#     new-method :shop_type
-#   Game_System
-#     alias      :initialize
-#     new-method :iex_init_custom_shop
-#   Game_Interpreter
-#     new-method :set_custom_shop_name
-#     new-method :set_custom_shop_icon
-#   Scene_Shop
-#     overwrite  :start
-#     overwrite  :create_command_window
-#     overwrite  :terminate
-#     overwrite  :update
-#     overwrite  :dispose_command_window
-#     overwrite  :update_command_selection
-#     overwrite  :update_buy_selection
-#     overwrite  :update_sell_selection
-#
-#------------------------------------------------------------------------------#
-#==============================================================================#
-# ** CHANGE LOG
-#------------------------------------------------------------------------------#
-# (DD/MM/YYYY)
-#  10/26/2010 - V1.0  Ported to IEX and CMV'ed
-#  12/08/2010 - V1.0a Fixed Help Window wouldn't update
-#  01/21/2011 - V2.0  Huge Rehaul!
-#                     Added new tab feature, you can now create your own
-#                     custom shop tabs
-#                     New Graphics options
-#  01/21/2011 - V2.0a Few Visual Fixes, and improvements.
-#  01/23/2011 - V2.0b Fixed to work with KGC_Cursor_Animation
-#  01/26/2011 - V2.0c Fixed sell window issues, prices weren't shown
-#                     correctly. Also added a resale rate.
-#
-#------------------------------------------------------------------------------#
-#==============================================================================#
 # **KNOWN ISSUES
 #------------------------------------------------------------------------------#
 #  Non at the moment.
+#
+#------------------------------------------------------------------------------#
+#==============================================================================#
+# **CHANGE LOG
+#------------------------------------------------------------------------------#
+#
+# 10/26/2010 V1.0  Ported to IEX and CMV'ed
+# 12/08/2010 V1.0a Fixed Help Window wouldn't update
 #
 #------------------------------------------------------------------------------#
 $imported = {} if $imported == nil
@@ -101,83 +67,36 @@ $imported["IEX_Scene_Shop_CMV"] = true
 #==============================================================================
 module IEX
   module SCENE_SHOP
-#==============================================================================#
+#==============================================================================
 #                           Start Customization
-#------------------------------------------------------------------------------#
-#==============================================================================#
-# ---------------------------------------------------------------------------- #
-# Visuals
+#------------------------------------------------------------------------------
+#==============================================================================
     # Window Size and Positioing Information
     # If you are unsure of what to do, leave it.
     # Also DO NOT have the width or height LESS than 32.
     # But why would you do that? You couldn't see anything.
-    GWIDTH  = Graphics.width
-    GHEIGHT = Graphics.height
-
-    # Original Positioning for 640 x 480 display
-    OWINDOW_POS_SIZE = {
+    WINDOW_POS_SIZE = {
     # :some window    => [x, y, width, height, opacity]
-      :help_window      => [GWIDTH / 2, 56, GWIDTH / 2, 56, 255],
-      :header_window    => [0, 0, GWIDTH - 156, 56, 255],
-      :gold_window      => [GWIDTH - 156, 0, 156, 56, 255],
-      :buy_dummy_window => [0, 112, GWIDTH, 304, 255],
-      :buy_window       => [0, 112,(GWIDTH / 2) + 32, 304, 255],
-      :sell_window      => [0, 112, GWIDTH, 304, 255],
-      :number_window    => [0, 112, GWIDTH / 2, 304 / 2, 255],
-      :status_window    => [(GWIDTH / 2) + 32, 112, (GWIDTH / 2) - 32, 304, 255],
-      :item_type_strip  => [0, GHEIGHT-60, GWIDTH, 56, 255]
+    :help_window      => [544 / 2, 56, 544 / 2, 56, 255],
+    :header_window    => [0, 0, 544 - 156, 56, 255],
+    :gold_window      => [544 - 156, 0, 156, 56, 255],
+    :buy_dummy_window => [0, 112, 544, 304, 255],
+    :buy_window       => [0, 112,(544 / 2) + 32, 304, 255],
+    #:buy_window       => [0, 112, 544 / 2, 304, 255],
+    :sell_window      => [0, 112, 544, 304, 255],
+    :number_window    => [0, 112, 544 / 2, 304 / 2, 255],
+    #:status_window    => [544 / 2, 112, 544 / 2, 304, 255],
+    :status_window    => [(544 / 2) + 32, 112, (544 / 2) - 32, 304, 255],
     }
 
-    # FFX Style
-    FFXWINDOW_POS_SIZE = {
-    # :some window    => [x, y, width, height, opacity]
-      :help_window      => [0, GHEIGHT-56, GWIDTH, 56, 255],
-      :header_window    => [0, GHEIGHT-56*3, GWIDTH/4, 56, 255],
-      :gold_window      => [0, GHEIGHT-56*2, GWIDTH/4, 56, 255],
-      :buy_dummy_window => [GWIDTH/4, 168,(GWIDTH/4*3), GHEIGHT-168-56, 255],
-      :buy_window       => [GWIDTH/4, 168,(GWIDTH/4*3), GHEIGHT-168-56, 255],
-      :sell_window      => [GWIDTH/4,   0,(GWIDTH/4*3), GHEIGHT-56    , 255],
-      :number_window    => [GWIDTH/4, 168,(GWIDTH/4*3), GHEIGHT-168-56, 255],
-      :status_window    => [0, 112, GWIDTH/4, GHEIGHT-168-112, 255],
-      :item_type_strip  => [GWIDTH/4, 112, (GWIDTH/4*3), 56, 255]
+    SHOP_COMMAND_SETTINGS = {
+    # :position => [x, y],
+    :position => [0, 56],
+    :width    => 544 / 2,
+    :columns  => 3,
+    :spacing  => 16,
+    :font_size=> 16,
     }
-    FFXWINDOW_POS_SIZE[:status_window] = [GWIDTH/4, 0, (GWIDTH/4*3), 112, 255]
-
-    # Assign the window position data # DO NOT LEAVE AS NIL
-    WINDOW_POS_SIZE = FFXWINDOW_POS_SIZE
-
-    # Should the Icon Tab strip be used?
-    USE_ICON_STRIP = true
-
-    # Window Modes
-    # 0 Default, 1 Detailed (Only Finished with Weapons and Armor)
-    NUMBER_WINDOW_MODE = 1
-    # 0 Default, 1 Detailed
-    SHOP_WINDOW_MODE = 1
-    # 0 Default, 1 ShortDefault, 2 Actor Strip
-    STATUS_MODE = 2
-
-    # Command_Window Settings (Original)
-    OSHOP_COMMAND_SETTINGS = {
-      # :position => [x, y],
-      :position => [0, 56],
-      :width    => GWIDTH / 2,
-      :columns  => 3,
-      :spacing  => 16,
-      :font_size=> 16,
-    }
-
-    # Command_Window Settings (FFX)
-    FFXSHOP_COMMAND_SETTINGS = {
-      # :position => [x, y],
-      :position => [0, 0],
-      :width    => GWIDTH / 4,
-      :columns  => 1,
-      :spacing  => 16,
-      :font_size=> 16,
-    }
-
-    SHOP_COMMAND_SETTINGS = FFXSHOP_COMMAND_SETTINGS
 
     # Window Skins
     WINDOW_SKINS = {
@@ -186,94 +105,60 @@ module IEX
     # When set to nil, no skin is used for that window
     # Be sure to set the opacity of the window to 0 when using this
    #:some_window      => "Filename",
-      :help_window      => nil,
-      :header_window    => nil,
-      :gold_window      => nil,
-      :buy_dummy_window => nil,
-      :buy_window       => nil,
-      :sell_window      => nil,
-      :number_window    => nil,
-      :status_window    => nil,
-      :command_window   => nil,
-      :item_type_strip  => nil,
+    :help_window      => nil,
+    :header_window    => nil,
+    :gold_window      => nil,
+    :buy_dummy_window => nil,
+    :buy_window       => nil,
+    :sell_window      => nil,
+    :number_window    => nil,
+    :status_window    => nil,
+    :command_window   => nil,
     }
-
-    # This controls 2 things,
-    # 1 Available Shop Types
-    # 2 Shop Type Icons
-    # Amazing huh?
-    # Use this tag with any item, equipment, or even skill (Serves no purpose here)
-    # <shoptype: phrase>
-    # This will assign the item to a group stated here
-    # NOTE* Items, Weapons, Armor, Skills are all auto-assigned
-    # You can easily change thme by using the shoptype tag.
-    SHOP_ITEM_TYPES = {
-      # Name(Note this must be in full caps) => icon_index
-      "ITEM"      => 64,
-      "WEAPON"    => 1,
-      "ARMOR"     => 42,
-      "HELMET"    => 32,
-      "ARMS"      => 50,
-      "LEGS"      => 48,
-      "BATTLE"    => 186,
-    }
-    SHOP_TYPE_ORDER = ["ITEM", "BATTLE", "WEAPON", "ARMOR", "HELMET", "ARMS", "LEGS"]
-
-    # By changing this constant from nil, all items will become the written one
-    # Use this if you decided not to use the icon strip
-    FORCE_ASSIGN = nil
 
     # Shop Icons
     SHOP_ICONS = {
    #:some_icon  => icon_index,
-      :buy_icon   => 144,
-      :sell_icon  => 147,
-      :cancel_icon=> 213,
-      :gold_icon  => 205,
-   :def_shop_icon => 144,
-      :have_icon  => 144,
+    :buy_icon   => 144,
+    :sell_icon  => 147,
+    :cancel_icon=> 213,
+    :gold_icon  => 205,
+ :def_shop_icon => 144,
+
    # Status Icons
-      :atk_icon   => 2,
-      :def_icon   => 52,
+    :atk_icon   => 2,
+    :def_icon   => 52,
    # Shop Status Icons
-  :possesion_icon => 144,
+    :weapon_icon=> 1,
+    :armor_icon => 42,
+    :item_icon  => 64,
+:possesion_icon => 5962,
     }
-    # Font size used when showing currency
-    CURRENCY_FONT_SIZE = 18
     # Other settings
     # Number of Columns the Sell window has
-    SHOP_TABS = 1
+    SHOP_TABS  = 2
     # Number of Columns the Sales window has / Buy Dummy Window
-    USE_DUMMY_WINDOW = false
     DUMMY_SHOP_TABS = 2
     # Should items with a price of 0 be included
-    SHOW_UNSELLABLE_ITEMS = false
-
-# ---------------------------------------------------------------------------- #
-# Shop Settings
-
+    SHOW_UNSELLABLE_ITEMS = true
     # Maximum number of an item that can be bought from the shop
     MAX_BUY_ITEMS = 99
 
-    # Items will sell at x% of there original price
-    # Default is 50
-    SELL_RATE = 75 # Items will sell back at 75% there original price
-
-# ---------------------------------------------------------------------------- #
-# Vocab
+    # Font size used when showing currency
+    CURRENCY_FONT_SIZE = 18
 
     # Vocab
-    DEF_SHOP_NAME     = "Shop"
-    PRICE_0_TEXT      = "Free"
+    DEF_SHOP_NAME = "Shop"
+    PRICE_0_TEXT = "Free"
     UNIT_PRICE_FORMAT = "Unit Price: %d"
-    CANT_EQUIP_TEXT   = "Can't Equip"
+    CANT_EQUIP_TEXT = "Can't Equip"
     ITEM_TYPE_TEXTS = {
-      :weapon         => "Weapon",
-      :armor          => "Armor",
-      :useable_item   => "Consume",
-      :not_useable    => "Unusable",
-      :not_consumable => "Non Consume",
-      :battle_item    => "Battle",
+    :weapon => "Weapon",
+    :armor  => "Armor",
+    :useable_item => "Consume",
+    :not_useable  => "Unusable",
+    :not_consumable => "Non Consume",
+    :battle_item  => "Battle",
     }
 #==============================================================================
 #                           End Customization
@@ -282,61 +167,6 @@ module IEX
   end
 end
 
-#==============================================================================
-# ** IEX::SCENE_SHOP - Lunatic
-#------------------------------------------------------------------------------
-#==============================================================================
-module IEX::SCENE_SHOP
-
-  # You can create a custom resale rate for items here.
-  def self.sell_rate(item)
-    case item
-    when RPG::UsableItem
-      #
-    when RPG::Weapon
-      #
-    when RPG::Armor
-      #
-    when RPG::Skill # Currently does nothing
-    end
-    return SELL_RATE
-  end
-
-end
-#==============================================================================
-# ** RPG::BaseItem
-#------------------------------------------------------------------------------
-#==============================================================================
-class RPG::BaseItem
-
-  def sscmv_cache
-    @sscmv_cache_complete = false
-    case self
-    when RPG::UsableItem
-      @shop_type = "ITEM"
-    when RPG::Weapon
-      @shop_type = "WEAPON"
-    when RPG::Armor
-      @shop_type = "ARMOR"
-    when RPG::Skill # Now why did I do this?
-      @shop_type = "SKILL"
-    end
-    self.note.split(/[\r\n]+/).each { |line|
-    case line
-    when /<(?:SHOP_TYPE|SHOP TYPE|shoptype):[ ](.*)>/i
-      @shop_type = $1.to_s.upcase
-    end
-    }
-    @shop_type = IEX::SCENE_SHOP::FORCE_ASSIGN if IEX::SCENE_SHOP::FORCE_ASSIGN != nil
-    @sscmv_cache_complete = true
-  end
-
-  def shop_type
-    sscmv_cache unless @sscmv_cache_complete
-    return @shop_type
-  end
-
-end
 #==============================================================================
 # ** Game System
 #------------------------------------------------------------------------------
@@ -376,24 +206,10 @@ class Game_Interpreter
 end
 
 #==============================================================================
-# ** Window_Base
-#------------------------------------------------------------------------------
-#==============================================================================
-class Window_Base < Window
-
-  def open_close_state?
-    return true if @opening
-    return true if @closing
-    return false
-  end
-
-end
-#==============================================================================
 # ** IEX_ShopWindow_Item
 #------------------------------------------------------------------------------
 #==============================================================================
 class IEX_ShopWindow_Item < Window_Selectable
-
   attr_accessor :back_sprite
   #--------------------------------------------------------------------------
   # * Object Initialization
@@ -507,31 +323,35 @@ class IEX_ShopWindow_Item < Window_Selectable
   #     index : item number
   #--------------------------------------------------------------------------
   def draw_item(index)
-    item = @data[index]
-    number = $game_party.item_number(item)
-    #enabled = (item.price <= $game_party.gold and number < IEX::SCENE_SHOP::MAX_BUY_ITEMS)
     rect = item_rect(index)
     self.contents.clear_rect(rect)
-    draw_item_name(item, rect.x, rect.y)#, enabled)
-    rect.width -= 4
-    def_size = self.contents.font.size
-    self.contents.font.size = IEX::SCENE_SHOP::CURRENCY_FONT_SIZE
-    case IEX::SCENE_SHOP::SHOP_WINDOW_MODE
-    when 0
-    when 1
-      draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:have_icon], rect.x + (rect.width - 24),rect.y)
-      self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, number, 2)
-      rect.width -= 128
+    item = @data[index]
+    if item != nil
+      number = $game_party.item_number(item)
+      enabled = enable?(item)
+      rect.width -= 4
+      def_size = self.contents.font.size
+      self.contents.font.size = 18
+      draw_item_name(item, rect.x, rect.y, enabled)
+      self.contents.font.size = def_size
+      draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:gold_icon], rect.x + rect.width - 20, rect.y, true)
+      self.contents.font.color = normal_color
+
+      def_size = self.contents.font.size
+      self.contents.font.size = IEX::SCENE_SHOP::CURRENCY_FONT_SIZE
+      if item.price <= 0
+        self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, IEX::SCENE_SHOP::PRICE_0_TEXT , 2)
+      else
+        draw_currency_value(item.price, rect.x + 64, rect.y, rect.width - 88)
+      end
+      self.contents.font.size = def_size
+      self.contents.font.color = normal_color
+      rect.width -= 72
+      def_size = self.contents.font.size
+      self.contents.font.size = 16
+      self.contents.draw_text(rect, sprintf("x%2d", number), 2)
+      self.contents.font.size = def_size
     end
-    if item.price <= 0
-      self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, IEX::SCENE_SHOP::PRICE_0_TEXT , 2)
-    else
-      price = IEX::SCENE_SHOP.sell_rate(item) * item.price / 100
-      draw_currency_value(price, rect.x - 24, rect.y, rect.width)
-      #self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, item.price, 2)
-    end
-    self.contents.font.size = def_size
-    draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:gold_icon], rect.x + (rect.width - 24),rect.y)
   end
   #--------------------------------------------------------------------------
   # * Update Help Text
@@ -574,6 +394,7 @@ end
 #------------------------------------------------------------------------------
 #  This window displays the amount of gold.
 #==============================================================================
+
 class IEX_Window_Gold < Window_Base
   attr_accessor :back_sprite
   #--------------------------------------------------------------------------
@@ -655,11 +476,10 @@ end
 #------------------------------------------------------------------------------
 #  This window displays buyable goods on the shop screen.
 #==============================================================================
-class IEX_Window_ShopBuy < Window_Selectable
 
+class IEX_Window_ShopBuy < Window_Selectable
   attr_accessor :back_sprite
   attr_reader   :type
-  attr_reader   :last_coords
 
   #--------------------------------------------------------------------------
   # * Object Initialization
@@ -670,17 +490,12 @@ class IEX_Window_ShopBuy < Window_Selectable
     super(x, y, width, height)
     @shop_goods = $game_temp.shop_goods
     @column_max = columns
-    create_backsprite
-    @last_coords = []
-    @type = ""
-    refresh
-    self.index = 0
-  end
-
-  def create_backsprite
     @back_sprite = Sprite.new
     @back_sprite.x = self.x
     @back_sprite.y = self.y
+    @type = ""
+    refresh
+    self.index = 0
   end
 
   def set_filter_type(new_type = nil)
@@ -691,13 +506,11 @@ class IEX_Window_ShopBuy < Window_Selectable
   end
 
   def set_coords(coords)
-    return if self.disposed?
     self.x = coords[0]
     self.y = coords[1]
     self.width = coords[2]
     self.height = coords[3]
     self.opacity = coords[4]
-    @last_coords = coords
     create_contents
     refresh
   end
@@ -720,7 +533,7 @@ class IEX_Window_ShopBuy < Window_Selectable
   end
 
   def visible=(vis)
-    @back_sprite.visible = vis if @back_sprite != nil
+    @back_sprite.visible = vis
     super(vis)
   end
 
@@ -739,14 +552,21 @@ class IEX_Window_ShopBuy < Window_Selectable
       item = nil
       case goods_item[0]
       when 0
-        item = $data_items[goods_item[1]]
+        if @type == "All" or @type == "Item"
+          item = $data_items[goods_item[1]]
+        end
       when 1
-        item = $data_weapons[goods_item[1]]
+        if @type == "All" or @type == "Weapon"
+          item = $data_weapons[goods_item[1]]
+        end
       when 2
-        item = $data_armors[goods_item[1]]
+        if @type == "All" or @type == "Armor"
+          item = $data_armors[goods_item[1]]
+        end
       end
-      next if item == nil
-      @data.push(item) if [item.shop_type, "ALL"].include?(@type)
+      if item != nil
+        @data.push(item)
+      end
     end
     @item_max = @data.size
     create_contents
@@ -774,18 +594,10 @@ class IEX_Window_ShopBuy < Window_Selectable
     rect.width -= 4
     def_size = self.contents.font.size
     self.contents.font.size = IEX::SCENE_SHOP::CURRENCY_FONT_SIZE
-    case IEX::SCENE_SHOP::SHOP_WINDOW_MODE
-    when 0
-    when 1
-      draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:have_icon], rect.x + (rect.width - 24),rect.y)
-      self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, number, 2)
-      rect.width -= 128
-    end
     if item.price <= 0
       self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, IEX::SCENE_SHOP::PRICE_0_TEXT , 2)
     else
-      draw_currency_value(item.price, rect.x - 24, rect.y, rect.width)
-      #self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, item.price, 2)
+      self.contents.draw_text(rect.x - 24, rect.y, rect.width, rect.height, item.price, 2)
     end
     self.contents.font.size = def_size
     draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:gold_icon], rect.x + (rect.width - 24),rect.y)
@@ -804,6 +616,7 @@ end
 #------------------------------------------------------------------------------
 #  This window shows explanations.
 #==============================================================================
+
 class IEX_Shop_ItemWindow_Help < Window_Base
   attr_accessor :back_sprite
   #--------------------------------------------------------------------------
@@ -869,6 +682,7 @@ end
 #------------------------------------------------------------------------------
 #  This window deals with general command choices.
 #==============================================================================
+
 class IEX_Shop_ItemCommand < Window_Selectable
   #--------------------------------------------------------------------------
   # * Public Instance Variables
@@ -1052,7 +866,7 @@ class IEX_Shop_ItemHeader < Window_Base
 end
 
 #==============================================================================
-# ** IEX_Icon_Sprite
+# ** IEX_Window_ShopStatus
 #------------------------------------------------------------------------------
 #==============================================================================
 class IEX_Icon_Sprite < Sprite
@@ -1069,28 +883,27 @@ class IEX_Icon_Sprite < Sprite
 
 end
 
-#==============================================================================
-# ** IEX_Window_ShopStatus
-#------------------------------------------------------------------------------
-#==============================================================================
 class IEX_Window_ShopStatus < Window_ShopStatus
   attr_accessor :back_sprite
-  attr_accessor :icon_strip
 
   def initialize(x, y)
     super(x, y)
     @back_sprite = Sprite.new
     @back_sprite.x = self.x
     @back_sprite.y = self.y
-    @type = "ALL"
-    if IEX::SCENE_SHOP::USE_ICON_STRIP
-      window_skins = IEX::SCENE_SHOP::WINDOW_SKINS
-      @icon_strip = IEX_ShopType_BarWindow.new(0, 0, Graphics.width, 56)
-      @icon_strip.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:item_type_strip])
-      if window_skins[:item_type_strip] != nil
-        @icon_strip.back_sprite.bitmap = Cache.system(window_skins[:item_type_strip])
-      end
-    end
+    @type = "All"
+    @type_icons = {}
+    @type_icons["Armor"]  = IEX_Icon_Sprite.new
+    @type_icons["Item"]   = IEX_Icon_Sprite.new
+    @type_icons["Weapon"] = IEX_Icon_Sprite.new
+    @type_icons["Armor"].set_icon(IEX::SCENE_SHOP::SHOP_ICONS[:armor_icon])
+    @type_icons["Item"].set_icon(IEX::SCENE_SHOP::SHOP_ICONS[:item_icon])
+    @type_icons["Weapon"].set_icon(IEX::SCENE_SHOP::SHOP_ICONS[:weapon_icon])
+    @type_icons["Armor"].z  = 200
+    @type_icons["Item"].z   = 200
+    @type_icons["Weapon"].z = 200
+    @icon_order = ["Item", "Weapon", "Armor"]
+    update_icon_type
   end
 
   def set_coords(coords)
@@ -1104,55 +917,43 @@ class IEX_Window_ShopStatus < Window_ShopStatus
   end
 
   def dispose
-    unless @back_sprite.nil?
+    if @back_sprite != nil
       @back_sprite.dispose
       @back_sprite = nil
     end
-    unless @icon_strip.nil?
-      @icon_strip.dispose
-      @icon_strip = nil
+    for spr in @type_icons.values
+      next if spr == nil
+      spr.dispose
+      spr = nil
     end
+
     super
   end
 
   def update_win_type(new_type)
-    if new_type != @type && !new_type.nil?
+    if new_type != @type and new_type != nil
       @type = new_type
-      @icon_strip.update_win_type(new_type) unless @icon_strip.nil?
+      update_icon_type
     end
   end
 
-  #--------------------------------------------------------------------------
-  # * Draw Actor Walking Graphic
-  #     actor : actor
-  #     x     : draw spot x-coordinate
-  #     y     : draw spot y-coordinate
-  #--------------------------------------------------------------------------
-  def draw_actor_graphic(actor, x, y, enabled=true)
-    draw_character(actor.character_name, actor.character_index, x, y, enabled)
-  end
-
-  #--------------------------------------------------------------------------
-  # * Draw Character Graphic
-  #     character_name  : Character graphic filename
-  #     character_index : Character graphic index
-  #     x     : draw spot x-coordinate
-  #     y     : draw spot y-coordinate
-  #--------------------------------------------------------------------------
-  def draw_character(character_name, character_index, x, y, enabled=true)
-    return if character_name == nil
-    bitmap = Cache.character(character_name)
-    sign = character_name[/^[\!\$]./]
-    if sign != nil and sign.include?('$')
-      cw = bitmap.width / 3
-      ch = bitmap.height / 4
+  def update_icon_type
+    for spr in @type_icons.values
+      next if spr == nil
+      spr.opacity = 128
+    end
+    case @type
+    when "All"
+      for spr in @type_icons.values
+        next if spr == nil
+        spr.opacity = 255
+      end
     else
-      cw = bitmap.width / 12
-      ch = bitmap.height / 8
+      if @type_icons.has_key?(@type)
+        @type_icons[@type].opacity = 255
+      end
     end
-    n = character_index
-    src_rect = Rect.new((n%4*3+1)*cw, (n/4*4)*ch, cw, ch)
-    self.contents.blt(x - cw / 2, y - ch, bitmap, src_rect, enabled ? 255 : 128)
+    update
   end
 
   #--------------------------------------------------------------------------
@@ -1160,59 +961,20 @@ class IEX_Window_ShopStatus < Window_ShopStatus
   #--------------------------------------------------------------------------
   def refresh
     self.contents.clear
-    yo = 0 # 56
-    case IEX::SCENE_SHOP::STATUS_MODE
-    when 0
-      if @item != nil
-        number = $game_party.item_number(@item)
-        draw_possession(4, yo, number)
-        for actor in $game_party.members
-          x = 4
-          y = yo + WLH * (2 + actor.index * 2)
-          draw_actor_parameter_change(actor, x, y, 0)
-        end
-      end
-    when 1
-      if @item != nil
-        number = $game_party.item_number(@item)
-        draw_possession(4, yo, number)
-        for actor in $game_party.members
-          x = 4
-          y = yo + WLH * (2 + actor.index * 2)
-          draw_actor_parameter_change(actor, x, y, 1)
-        end
-      end
-    when 2
-      coun = 0
+    if @item != nil
+      number = $game_party.item_number(@item)
+      update_icon_type
+      self.contents.font.color = system_color
+      draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:possesion_icon], 4, 56)
+      self.contents.draw_text(4 + 28, 56, self.contents.width - 32, WLH, Vocab::Possession)
+      self.contents.font.color = normal_color
+      self.contents.draw_text(4 + 28, 56, self.contents.width - 32, WLH, number, 2)
       for actor in $game_party.members
-        y = yo + WLH + 16
-        perwidth = self.contents.width / $game_party.members.size
-        sx = (self.contents.width - (32 * $game_party.members.size)) / $game_party.members.size / 2
-        x = 16+sx+(perwidth * coun)
-        draw_actor_graphic(actor, x, y, actor.equippable?(@item))
-        coun += 1
-      end
-      coun = 0
-      if @item != nil
-        number = $game_party.item_number(@item)
-        for actor in $game_party.members
-          perwidth = self.contents.width / $game_party.members.size
-          sx = (self.contents.width - (32 * $game_party.members.size)) / $game_party.members.size / 2
-          x = sx+(perwidth * coun)
-          y = yo + WLH
-          draw_actor_parameter_change(actor, x - 8, y, 2)
-          coun += 1
-        end
+        x = 4
+        y = 56 + WLH * (2 + actor.index * 2)
+        draw_actor_parameter_change(actor, x, y)
       end
     end
-  end
-
-  def draw_possession(x, y, number)
-    self.contents.font.color = system_color
-    draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:possesion_icon], x, y)
-    self.contents.draw_text(x + 28, y, self.contents.width-x-32, WLH, Vocab::Possession)
-    self.contents.font.color = normal_color
-    self.contents.draw_text(x + 28, y, self.contents.width-x-32, WLH, number.to_i, 2)
   end
   #--------------------------------------------------------------------------
   # * Draw Actor's Current Equipment and Parameters
@@ -1220,14 +982,12 @@ class IEX_Window_ShopStatus < Window_ShopStatus
   #     x     : draw spot x-coordinate
   #     y     : draw spot y-coordinate
   #--------------------------------------------------------------------------
-  def draw_actor_parameter_change(actor, x, y, mode = 0)
+  def draw_actor_parameter_change(actor, x, y)
     return if @item.is_a?(RPG::Item)
     enabled = actor.equippable?(@item)
     self.contents.font.color = system_color
     self.contents.font.color.alpha = enabled ? 255 : 128
-    if mode != 2
-      self.contents.draw_text(x, y, self.contents.width - 32, WLH, actor.name)
-    end
+    self.contents.draw_text(x, y, self.contents.width - 32, WLH, actor.name)
     self.contents.font.color = normal_color
     if @item.is_a?(RPG::Weapon)
       item1 = weaker_weapon(actor)
@@ -1247,68 +1007,20 @@ class IEX_Window_ShopStatus < Window_ShopStatus
       stat_name_def = Vocab.def
 
       def_size = self.contents.font.size
-
-      case mode
-      when 0
-        self.contents.font.size = 18
-        draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:atk_icon], self.contents.width - 92, y) #x
-        draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:def_icon], self.contents.width - 20, y)
-        stat_height = 28
-        self.contents.draw_text(x, y, self.contents.width - 96, stat_height, sprintf("%+d %s", change_atk, stat_name_atk), 2)
-        self.contents.draw_text(x, y, self.contents.width - 24, stat_height, sprintf("%+d %s", change_def, stat_name_def), 2)
-        self.contents.font.size = def_size
-      when 1
-        atk_x = self.contents.width - 64
-        def_x = self.contents.width - 32
-        draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:atk_icon], atk_x, y) #x
-        draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:def_icon], def_x, y)
-        stat_height = 28
-        self.contents.font.size = 21
-        if change_atk >= 0 then ; self.contents.font.color = hp_gauge_color2
-        else ; self.contents.font.color = crisis_color
-        end
-        self.contents.draw_text(atk_x, y, 24, stat_height, change_atk, 2)
-        if change_def >= 0 then ; self.contents.font.color = mp_gauge_color2
-        else ; self.contents.font.color = crisis_color
-        end
-        self.contents.draw_text(def_x, y, 24, stat_height, change_def, 2)
-        self.contents.font.size = def_size
-        self.contents.font.color = normal_color
-      when 2
-        atk_x = x
-        atk_y = y
-        def_x = x + 24
-        def_y = y + 24
-        draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:atk_icon], atk_x, atk_y) #x
-        draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:def_icon], def_x, def_y)
-        stat_height = 28
-        self.contents.font.size = 21
-        if change_atk >= 0 then ; self.contents.font.color = hp_gauge_color2
-        else ; self.contents.font.color = crisis_color
-        end
-        self.contents.draw_text(atk_x, atk_y, 24, stat_height, change_atk, 2)
-        if change_def >= 0 then ; self.contents.font.color = mp_gauge_color2
-        else ; self.contents.font.color = crisis_color
-        end
-        self.contents.draw_text(def_x, def_y, 24, stat_height, change_def, 2)
-        self.contents.font.size = def_size
-        self.contents.font.color = normal_color
-      end
+      self.contents.font.size = 18
+      draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:atk_icon], self.contents.width - 92, y) #x
+      draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:def_icon], self.contents.width - 20, y)
+      stat_height = 28
+      self.contents.draw_text(x, y, self.contents.width - 96, stat_height, sprintf("%+d %s", change_atk, stat_name_atk), 2)
+      self.contents.draw_text(x, y, self.contents.width - 24, stat_height, sprintf("%+d %s", change_def, stat_name_def), 2)
+      self.contents.font.size = def_size
     else
       self.contents.font.color.alpha = 255
-      if mode == 2
-        self.contents.font.size = 12
-        self.contents.draw_text(x, y, 64, WLH, IEX::SCENE_SHOP::CANT_EQUIP_TEXT, 0)
-      else
-        self.contents.font.size = 18
-        self.contents.draw_text(x, y, self.contents.width - x, WLH, IEX::SCENE_SHOP::CANT_EQUIP_TEXT, 2)
-      end
+      self.contents.draw_text(x, y, self.contents.width - 24, WLH, IEX::SCENE_SHOP::CANT_EQUIP_TEXT, 2)
     end
     def_size = self.contents.font.size
-    if mode != 2
-      self.contents.font.size = 18
-      draw_item_name(item1, x + 16, y + WLH, enabled)
-    end
+    self.contents.font.size = 18
+    draw_item_name(item1, x + 16, y + WLH, enabled)
     self.contents.font.size = def_size
   end
 
@@ -1330,130 +1042,15 @@ class IEX_Window_ShopStatus < Window_ShopStatus
       @back_sprite.x = self.x
       @back_sprite.y = self.y
     end
-    @icon_strip.update if @icon_strip != nil
-  end
+    coun = 1
 
-  def visible=(vis)
-    @back_sprite.visible = vis
-    @icon_strip.visible = vis if @icon_strip != nil
-    super(vis)
-  end
-
-end
-
-#==============================================================================
-# ** IEX_ShopType_BarWindow
-#------------------------------------------------------------------------------
-#==============================================================================
-class IEX_ShopType_BarWindow < Window_Base
-  attr_accessor :back_sprite
-
-  def initialize(*args)
-    super(*args)
-    @back_sprite = Sprite.new
-    @back_sprite.x = self.x
-    @back_sprite.y = self.y
-    @type = "ALL"
-    @type_icons = {}
-    for wi in IEX::SCENE_SHOP::SHOP_ITEM_TYPES.keys
-      @type_icons[wi]  = IEX_Icon_Sprite.new
-      @type_icons[wi].z = 200
-      @type_icons[wi].set_icon(IEX::SCENE_SHOP::SHOP_ITEM_TYPES[wi])
-    end
-    @icon_order = IEX::SCENE_SHOP::SHOP_TYPE_ORDER
-    update_icon_pos
-    update_icon_type
-  end
-
-  def set_coords(coords)
-    self.x = coords[0]
-    self.y = coords[1]
-    self.width = coords[2]
-    self.height = coords[3]
-    self.opacity = coords[4]
-    create_contents
-    update
-  end
-
-  def dispose
-    if @back_sprite != nil
-      @back_sprite.dispose
-      @back_sprite = nil
-    end
-    for spr in @type_icons.values
-      next if spr == nil
-      spr.dispose
-      spr = nil
-    end
-  end
-
-  def set_icon_opacity(val)
-    for spr in @type_icons.values
-      next if spr == nil
-      spr.opacity = val
-    end
-  end
-
-  def update_fadein
-    for key in @type_icons.keys
-      spr = @type_icons[key]
-      next if spr == nil
-      olimit = 128 if @type == key
-      olimit = 255 if @type == key
-      spr.opacity = [spr.opacity + (255/60), olimit].min
-    end
-  end
-
-  def update_fadeout
-  end
-
-  def update
-    super
-    update_icon_pos
-    if @back_sprite != nil
-      @back_sprite.visible = self.visible
-      @back_sprite.x = self.x
-      @back_sprite.y = self.y
-    end
-  end
-
-  def update_win_type(new_type)
-    if new_type != @type and new_type != nil
-      @type = new_type
-      update_icon_type
-    end
-  end
-
-  def update_icon_pos
-    coun = 0
     for ty in @icon_order
       spr = @type_icons[ty]
       next if spr == nil
-      perwidth = self.contents.width / @icon_order.size
-      sx = (self.contents.width - (24 * @icon_order.size)) / @icon_order.size / 2
-      spr.x = 16+self.x+sx+(perwidth * coun)
-      spr.y = self.y + (self.height-24) / 2
+      spr.x = 16 + self.x + ((self.contents.width / 4) * coun)
+      spr.y = self.y + 24
       coun += 1
     end
-  end
-
-  def update_icon_type
-    for spr in @type_icons.values
-      next if spr == nil
-      spr.opacity = 128
-    end
-    case @type.upcase
-    when "ALL"
-      for spr in @type_icons.values
-        next if spr == nil
-        spr.opacity = 255
-      end
-    else
-      if @type_icons.has_key?(@type)
-        @type_icons[@type].opacity = 255
-      end
-    end
-    update
   end
 
   def visible=(vis)
@@ -1466,6 +1063,7 @@ class IEX_ShopType_BarWindow < Window_Base
   end
 
 end
+
 #==============================================================================
 # ** IEX_Window_ShopNumber
 #------------------------------------------------------------------------------
@@ -1526,67 +1124,18 @@ class IEX_Window_ShopNumber < Window_ShopNumber
     self.contents.font.size = 18
     draw_item_name(@item, 4, 4)
     self.contents.font.size = def_size
-    draw_item_special_data(@item, 0, 4, self.contents.width / 2, 2)
+    draw_item_special_data(@item, self.contents.width / 2, 4, self.contents.width / 2, 2)
     self.contents.font.color = normal_color
     pri = sprintf(IEX::SCENE_SHOP::UNIT_PRICE_FORMAT, @price)
     draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:gold_icon], 4, 28)
 
     self.contents.draw_text(28, 28, self.contents.width, WLH, pri)
     self.contents.font.color = normal_color
-    self.contents.draw_text(4, self.contents.height - 32, 24, WLH, "x")
-    self.contents.draw_text(32, self.contents.height - 32, 24, WLH, @number, 2)
-    self.cursor_rect.set(36, self.contents.height - 32, 28, WLH)
-    draw_currency_value(@price * @number, 4, self.contents.height - 32, self.contents.width - 64)
-    draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:gold_icon], self.contents.width - 32, self.contents.height - 32)
-    case IEX::SCENE_SHOP::NUMBER_WINDOW_MODE
-    when 1
-      case @item
-      when RPG::Weapon, RPG::Armor
-        stats = ['atk', 'def', 'spi', 'agi']
-        stats.unshift('maxmp') if $imported["EquipmentOverhaul"]
-        stats.unshift('maxhp') if $imported["EquipmentOverhaul"]
-        stats << 'dex' if $imported["DEX Stat"]
-        stats << 'res' if $imported["RES Stat"]
-        line_limit = self.contents.height - 32 - 64
-        line_limit /= 24
-        x_coun = 0 ; y_coun = 0 ; coun = 0
-        for stat in stats
-          x_coun = coun / line_limit ; y_coun = coun % line_limit
-          ww = self.contents.width / 4
-          rect = Rect.new(8+(ww*x_coun), 56+(24*y_coun), self.contents.width / 2, WLH)
-          if $imported["IconModuleLibrary"]
-            case stat.to_sym
-            when :hp, :maxhp
-              draw_icon(YEM::ICON[:basic_stats][:hp], rect.x, rect.y)
-            when :mp, :maxmp
-              draw_icon(YEM::ICON[:basic_stats][:mp], rect.x, rect.y)
-            else
-              draw_icon(YEM::ICON[:basic_stats][stat.to_sym], rect.x, rect.y)
-            end
-            rect.x += 24
-          end
-          def_size = self.contents.font.size
-          self.contents.font.size = 18
-          self.contents.font.color = system_color
-          case stat.to_sym
-          when :hp, :maxhp
-            tx = Vocab.hp_a
-          when :mp, :maxmp
-            tx = Vocab.mp_a
-          else
-            tx = eval("Vocab.#{stat}")
-          end
-          self.contents.draw_text(rect, tx)
-          self.contents.font.size = 16
-          self.contents.font.color = normal_color
-          tx = eval("@item.#{stat}")
-          rect.x += 48
-          self.contents.draw_text(rect, tx)
-          coun += 1
-          self.contents.font.size = def_size
-        end
-      end
-    end
+    self.contents.draw_text(4, self.contents.height - 64, 24, WLH, "x")
+    self.contents.draw_text(32, self.contents.height - 64, 24, WLH, @number, 2)
+    self.cursor_rect.set(36, self.contents.height - 64, 28, WLH)
+    draw_currency_value(@price * @number, 4, self.contents.height - 64, self.contents.width - 64)
+    draw_icon(IEX::SCENE_SHOP::SHOP_ICONS[:gold_icon], self.contents.width - 32, self.contents.height - 64)
   end
 
   def draw_item_special_data(item, x, y, width, align = 0)
@@ -1599,6 +1148,7 @@ class IEX_Window_ShopNumber < Window_ShopNumber
     elsif item.is_a?(RPG::Armor)
       self.contents.draw_text(x, y, width, WLH, IEX::SCENE_SHOP::ITEM_TYPE_TEXTS[:armor], align)
     else
+      self.contents.draw_text(x, y, width, WLH, IEX::SCENE_SHOP::ITEM_TYPE_TEXTS[:armor], align)
       if item.occasion == 3
         self.contents.draw_text(x, y, width, WLH, IEX::SCENE_SHOP::ITEM_TYPE_TEXTS[:not_useable], align)
       elsif item.consumable and [0, 2].include?(item.occasion)
@@ -1641,85 +1191,43 @@ class Scene_Shop < Scene_Base
     create_menu_background
     create_command_window
     @win_index = 0
-    @help_window   = IEX_Shop_ItemWindow_Help.new(0, (416 - 56), 544, 56)
+    @help_window = IEX_Shop_ItemWindow_Help.new(0, (416 - 56), 544, 56)
     @header_window = IEX_Shop_ItemHeader.new(0, 0, 384, 56)
-    @gold_window   = IEX_Window_Gold.new(384, 0)
-    @dummy_window  = Window_Base.new(0, 112, 544, 304)
-    @dummy_window.visible = false
-    if IEX::SCENE_SHOP::USE_DUMMY_WINDOW
-      @buy_dummy_window = IEX_Window_ShopBuy.new(0, 112, 544, 248, IEX::SCENE_SHOP::DUMMY_SHOP_TABS)
-    end
+    @gold_window = IEX_Window_Gold.new(384, 0)
+    @buy_dummy_window = IEX_Window_ShopBuy.new(0, 112, 544, 248, IEX::SCENE_SHOP::DUMMY_SHOP_TABS)
     @buy_windows = {}
-    for wi in IEX::SCENE_SHOP::SHOP_ITEM_TYPES.keys
-      @buy_windows[wi] = IEX_Window_ShopBuy.new(544 / 2, 112, 544 / 2, 248, 1)
-      @buy_windows[wi].set_filter_type(wi)
-    end
+    @buy_windows["Item"] = IEX_Window_ShopBuy.new(544 / 2, 112, 544 / 2, 248, 1)
+    @buy_windows["Weapon"] = IEX_Window_ShopBuy.new(544 / 2, 112, 544 / 2, 248, 1)
+    @buy_windows["Armor"] = IEX_Window_ShopBuy.new(544 / 2, 112, 544 / 2, 248, 1)
+    @buy_windows["Item"].set_filter_type("Item")
+    @buy_windows["Weapon"].set_filter_type("Weapon")
+    @buy_windows["Armor"].set_filter_type("Armor")
     @buy_window_scroll_list = []
-    @window_order = IEX::SCENE_SHOP::SHOP_TYPE_ORDER
+    @window_order = ["Item", "Weapon", "Armor"]
     for ke in @window_order
       next if ke == nil
       if @buy_windows[ke].any_valid_items?
         @buy_window_scroll_list.push(ke)
       end
     end
-    @sell_window   = IEX_Window_CurrentItems.new(0, 112, 544, 248, IEX::SCENE_SHOP::SHOP_TABS)
+    @sell_window = IEX_Window_CurrentItems.new(0, 112, 544, 248, IEX::SCENE_SHOP::SHOP_TABS)
     @number_window = IEX_Window_ShopNumber.new(252, 112)
     @status_window = IEX_Window_ShopStatus.new(0, 112)
 
-    align_windows
-    apply_window_skins
-
-    if $game_system.custom_shop_name != nil
-      name = $game_system.custom_shop_name
-    else
-      name = IEX::SCENE_SHOP::DEF_SHOP_NAME
-    end
-    if $game_system.custom_shop_icon != nil
-      icon = $game_system.custom_shop_icon
-    else
-      icon = IEX::SCENE_SHOP::SHOP_ICONS[:def_shop_icon]
-    end
-
-    @buy_window = @buy_windows[@buy_window_scroll_list[@win_index]]
-
-    @header_window.set_header(name, icon)
-    @buy_dummy_window.index = -1 if @buy_dummy_window != nil
-    @buy_dummy_window.active = false if @buy_dummy_window != nil
-    @buy_window.active = false
-    @buy_window.visible = false
-    @buy_window.help_window = @help_window
-    @sell_window.active = false
-    @sell_window.visible = false
-    @sell_window.help_window = @help_window
-    @number_window.active = false
-    @number_window.visible = false
-    @status_window.visible = false
-  end
-
-  #--------------------------------------------------------------------------
-  # * Align Windows
-  #--------------------------------------------------------------------------
-  def align_windows
     @help_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:help_window])
     @header_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:header_window])
     @gold_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:gold_window])
-    @buy_dummy_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:buy_dummy_window]) if @buy_dummy_window != nil
+    @buy_dummy_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:buy_dummy_window])
+    #@buy_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:buy_window])
     for win in @buy_windows.values
       next if win == nil
       win.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:buy_window])
       win.visible = false
-      win.active = false
-      win.openness = 0
     end
     @sell_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:sell_window])
     @number_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:number_window])
     @status_window.set_coords(IEX::SCENE_SHOP::WINDOW_POS_SIZE[:status_window])
-  end
 
-  #--------------------------------------------------------------------------
-  # * Apply Window Skins
-  #--------------------------------------------------------------------------
-  def apply_window_skins
     window_skins = IEX::SCENE_SHOP::WINDOW_SKINS
     if window_skins[:help_window] != nil
       @help_window.back_sprite.bitmap = Cache.system(window_skins[:help_window])
@@ -1731,7 +1239,7 @@ class Scene_Shop < Scene_Base
       @gold_window.back_sprite.bitmap = Cache.system(window_skins[:gold_window])
     end
     if window_skins[:buy_dummy_window] != nil
-      @buy_dummy_window.back_sprite.bitmap = Cache.system(window_skins[:buy_dummy_window]) if @buy_dummy_window  != nil
+      @buy_dummy_window.back_sprite.bitmap = Cache.system(window_skins[:buy_dummy_window])
     end
     if window_skins[:buy_window] != nil
       for win in @buy_windows.values
@@ -1750,7 +1258,34 @@ class Scene_Shop < Scene_Base
     if window_skins[:status_window] != nil
       @status_window.back_sprite.bitmap = Cache.system(window_skins[:status_window])
     end
+
+    if $game_system.custom_shop_name != nil
+      name = $game_system.custom_shop_name
+    else
+      name = IEX::SCENE_SHOP::DEF_SHOP_NAME
+    end
+    if $game_system.custom_shop_icon != nil
+      icon = $game_system.custom_shop_icon
+    else
+      icon = IEX::SCENE_SHOP::SHOP_ICONS[:def_shop_icon]
+    end
+
+    @buy_window = @buy_windows[@buy_window_scroll_list[@win_index]]
+
+    @header_window.set_header(name, icon)
+    @buy_dummy_window.index = -1
+    @buy_dummy_window.active = false
+    @buy_window.active = false
+    @buy_window.visible = false
+    @buy_window.help_window = @help_window
+    @sell_window.active = false
+    @sell_window.visible = false
+    @sell_window.help_window = @help_window
+    @number_window.active = false
+    @number_window.visible = false
+    @status_window.visible = false
   end
+
   #--------------------------------------------------------------------------
   # * Create Command Window
   #--------------------------------------------------------------------------
@@ -1780,8 +1315,7 @@ class Scene_Shop < Scene_Base
     dispose_command_window
     @help_window.dispose
     @gold_window.dispose
-    @dummy_window.dispose if @dummy_window != nil
-    @buy_dummy_window.dispose if @buy_dummy_window != nil
+    @buy_dummy_window.dispose
     #@buy_window.dispose
     for win in @buy_windows.values
       next if win == nil
@@ -1806,15 +1340,6 @@ class Scene_Shop < Scene_Base
     $game_system.custom_shop_name = nil
     $game_system.custom_shop_icon = nil
   end
-
-  #--------------------------------------------------------------------------
-  # * Dispose of Command Window
-  #--------------------------------------------------------------------------
-  def dispose_command_window
-    @command_window.dispose
-    @command_window = nil
-  end
-
   #--------------------------------------------------------------------------
   # * Frame Update
   #--------------------------------------------------------------------------
@@ -1824,32 +1349,30 @@ class Scene_Shop < Scene_Base
     @help_window.update        if @help_window.active
     @command_window.update     if @command_window.active
     @gold_window.update        if @gold_window.active
-    @dummy_window.update       if @dummy_window.active
-    if @buy_dummy_window != nil
-      @buy_dummy_window.update   if @buy_dummy_window.active
-    end
-    if @buy_window.active
-      @buy_window.update
-    elsif !@buy_window.active && @buy_window.open_close_state?
-      @buy_window.update
-    end
-    if @sell_window.active
-      @sell_window.update
-    elsif !@sell_window.active && @sell_window.open_close_state?
-      @sell_window.update
-    end
+    @buy_dummy_window.update   if @buy_dummy_window.active
+    @buy_window.update         if @buy_window.active
+    @sell_window.update        if @sell_window.active
     @number_window.update      if @number_window.active
     @status_window.update_win_type(@buy_window_scroll_list[@win_index])
     @status_window.update      if @status_window.active
-    for win in @buy_windows.values
-      next if win == nil
-      next if win == @buy_window
-      win.update if win.open_close_state?
-    end
     if @command_window.active
       update_command_selection
     elsif @buy_window.active
-      update_tab_switching
+      if Input.trigger?(Input::LEFT)
+        Sound.play_cursor
+        @buy_window.visible = false
+        @win_index = (@win_index - 1) % @buy_window_scroll_list.size
+        @buy_window = @buy_windows[@buy_window_scroll_list[@win_index]]
+        @buy_window.help_window = @help_window
+        @buy_window.visible = true
+      elsif Input.trigger?(Input::RIGHT)
+        Sound.play_cursor
+        @buy_window.visible = false
+        @win_index = (@win_index + 1) % @buy_window_scroll_list.size
+        @buy_window = @buy_windows[@buy_window_scroll_list[@win_index]]
+        @buy_window.help_window = @help_window
+        @buy_window.visible = true
+      end
       update_buy_selection
     elsif @sell_window.active
       update_sell_selection
@@ -1858,31 +1381,14 @@ class Scene_Shop < Scene_Base
     end
   end
 
-  def update_tab_switching
-    if Input.trigger?(Input::LEFT)
-      Sound.play_cursor
-      @buy_window.visible = true
-      @buy_window.close #visible = false
-      @buy_window.active = false
-      @win_index = (@win_index - 1) % @buy_window_scroll_list.size
-      @buy_window = @buy_windows[@buy_window_scroll_list[@win_index]]
-      @buy_window.active = true
-      @buy_window.help_window = @help_window
-      @buy_window.open
-      @buy_window.visible = true
-    elsif Input.trigger?(Input::RIGHT)
-      Sound.play_cursor
-      @buy_window.visible = true
-      @buy_window.close #visible = false
-      @buy_window.active = false
-      @win_index = (@win_index + 1) % @buy_window_scroll_list.size
-      @buy_window = @buy_windows[@buy_window_scroll_list[@win_index]]
-      @buy_window.active = true
-      @buy_window.help_window = @help_window
-      @buy_window.open
-      @buy_window.visible = true
-    end
+  #--------------------------------------------------------------------------
+  # * Dispose of Command Window
+  #--------------------------------------------------------------------------
+  def dispose_command_window
+    @command_window.dispose
+    @command_window = nil
   end
+
   #--------------------------------------------------------------------------
   # * Update Command Selection
   #--------------------------------------------------------------------------
@@ -1895,27 +1401,19 @@ class Scene_Shop < Scene_Base
       when 0  # buy
         Sound.play_decision
         @command_window.active = false
-        @buy_dummy_window.visible = false if @buy_dummy_window != nil
+        @buy_dummy_window.visible = false
         @buy_window.active = true
         @buy_window.visible = true
         @buy_window.refresh
         @status_window.visible = true
-        @buy_window.openness = 0
-        @status_window.openness = 0
-        @buy_window.open
-        @status_window.open
-        open_icon_strip
-        series_update
       when 1  # sell
         if $game_temp.shop_purchase_only
           Sound.play_buzzer
         else
           Sound.play_decision
           @command_window.active = false
-          @buy_dummy_window.visible = false if @buy_dummy_window != nil
+          @buy_dummy_window.visible = false
           @sell_window.active = true
-          @sell_window.openness = 0
-          @sell_window.open
           @sell_window.visible = true
           @sell_window.refresh
         end
@@ -1926,27 +1424,6 @@ class Scene_Shop < Scene_Base
     end
   end
 
-  def open_icon_strip
-    if @status_window.icon_strip != nil
-      @status_window.icon_strip.open
-    end
-  end
-
-  def close_icon_strip
-    if @status_window.icon_strip != nil
-      @status_window.icon_strip.open
-    end
-  end
-
-  def series_update
-    for i in 0..7
-      @buy_window.update
-      Graphics.update
-      if i > 3
-        @status_window.update
-      end
-    end
-  end
   #--------------------------------------------------------------------------
   # * Update Buy Item Selection
   #--------------------------------------------------------------------------
@@ -1955,12 +1432,8 @@ class Scene_Shop < Scene_Base
     if Input.trigger?(Input::B)
       Sound.play_cancel
       @command_window.active = true
-      @buy_dummy_window.visible = true if @buy_dummy_window != nil
+      @buy_dummy_window.visible = true
       @buy_window.active = false
-      @buy_window.close
-      @status_window.close
-      close_icon_strip
-      series_update
       @buy_window.visible = false
       @status_window.visible = false
       @status_window.item = nil
@@ -1978,7 +1451,6 @@ class Scene_Shop < Scene_Base
         max = @item.price == 0 ? item_lim : $game_party.gold / @item.price
         max = [max, item_lim - number].min
         @buy_window.active = false
-        @buy_window.close
         @buy_window.visible = false
         @number_window.set(@item, max, @item.price)
         @number_window.active = true
@@ -1994,9 +1466,9 @@ class Scene_Shop < Scene_Base
     if Input.trigger?(Input::B)
       Sound.play_cancel
       @command_window.active = true
-      @buy_dummy_window.visible = true if @buy_dummy_window != nil
+      @buy_dummy_window.visible = true
       @sell_window.active = false
-      @sell_window.close #visible = false
+      @sell_window.visible = false
       @status_window.item = nil
       @help_window.set_text("")
     elsif Input.trigger?(Input::C)
@@ -2008,70 +1480,12 @@ class Scene_Shop < Scene_Base
         Sound.play_decision
         max = $game_party.item_number(@item)
         @sell_window.active = false
-        @sell_window.close #visible = false
-        open_icon_strip
-        prc = IEX::SCENE_SHOP.sell_rate(@item) * @item.price / 100
-        @number_window.set(@item, max, prc)
+        @sell_window.visible = false
+        @number_window.set(@item, max, @item.price / 2)
         @number_window.active = true
         @number_window.visible = true
         @status_window.visible = true
-        @status_window.openness = 0
-        @status_window.open
       end
-    end
-  end
-
-  #--------------------------------------------------------------------------
-  # * Cancel Number Input
-  #--------------------------------------------------------------------------
-  def cancel_number_input
-    Sound.play_cancel
-    @number_window.active = false
-    @number_window.visible = false
-    case @command_window.index
-    when 0  # Buy
-      @buy_window.active = true
-      @buy_window.visible = true
-      @buy_window.open
-    when 1  # Sell
-      @sell_window.active = true
-      @sell_window.visible = true
-      @status_window.visible = false
-      @sell_window.open
-    end
-  end
-  #--------------------------------------------------------------------------
-  # * Confirm Number Input
-  #--------------------------------------------------------------------------
-  def decide_number_input
-    Sound.play_shop
-    @number_window.active = false
-    @number_window.visible = false
-    case @command_window.index
-    when 0  # Buy
-      $game_party.lose_gold(@number_window.number * @item.price)
-      $game_party.gain_item(@item, @number_window.number)
-      @gold_window.refresh
-      @buy_window.refresh
-      @status_window.refresh
-      @buy_window.active = true
-      @buy_window.visible = true
-      @buy_window.open
-    when 1  # sell
-      prc = IEX::SCENE_SHOP.sell_rate(@item) * @item.price / 100
-      $game_party.gain_gold(@number_window.number * prc)
-      $game_party.lose_item(@item, @number_window.number)
-      @gold_window.refresh
-      @sell_window.refresh
-      @status_window.refresh
-      @sell_window.active = true
-      @sell_window.visible = true
-      @status_window.visible = false
-      @sell_window.open
-    end
-    for win in @buy_windows.values
-      next if win == nil
-      win.refresh
     end
   end
 

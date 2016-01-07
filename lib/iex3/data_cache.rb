@@ -1,19 +1,21 @@
-$simport.r('iex3/data_cache', '1.0.0', 'Data Caching for RMVX')
+$simport.r 'iex3/data_cache', '1.0.0', 'Data Caching for RMVX'
 
-module DataCache
-  def self.data_extname
-    '.rvdata'
-  end
+class DataCacheClass
+  attr_accessor :logger
 
-  def self.init
+  def initialize
     @cache = {}
   end
 
-  def self.clear
+  def data_extname
+    '.rvdata'
+  end
+
+  def clear
     @cache.clear
   end
 
-  def self.load(filename)
+  def load(filename)
     @cache[filename] ||= begin
       map = load_data(filename)
       yield map if block_given?
@@ -21,18 +23,23 @@ module DataCache
     end
   end
 
-  def self.load_map(filename)
-    load(filename) do |map|
-      if map.data.zsize != 4
-        STDERR.puts "[DataCache] Repairing broken map data (filename: #{filename})"
-        map.data.resize(map.data.xsize, map.data.ysize, 4)
-      end
+  def patch_map(map, filename)
+    if map.data.zsize != 4
+      STDERR.puts "[DataCache] Repairing broken map data (filename: #{filename})"
+      map.data.resize(map.data.xsize, map.data.ysize, 4)
+    end
+  end
+  private :patch_map
+
+  def load_map(filename)
+    load filename do |map|
+      patch_map map, filename
     end
   end
 
-  def self.load_map_by_id(map_id)
-    load_map(sprintf('Data/Map%03d%s', map_id, data_extname))
+  def load_map_by_id(map_id)
+    load_map sprintf('Data/Map%03d%s', map_id, data_extname)
   end
-
-  init
 end
+
+DataCache = DataCacheClass.new

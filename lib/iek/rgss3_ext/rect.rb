@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/rect', '1.0.0', 'Extends Rect Class')
+$simport.r 'iek/rgss3_ext/rect', '1.0.0', 'Extends Rect Class'
 
 class Rect
   alias :w :width

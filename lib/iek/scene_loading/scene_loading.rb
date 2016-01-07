@@ -1,4 +1,4 @@
-$simport.r("iek/scene_loading", "1.0.0", "Loading scene stub")
+$simport.r "iek/scene_loading", "1.0.0", "Loading scene stub"
 
 class Scene_Loading < Scene_Base
   ##

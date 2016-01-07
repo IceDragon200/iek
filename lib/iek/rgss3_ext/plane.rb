@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/plane', '1.0.0', 'Extends Plane Class')
+$simport.r 'iek/rgss3_ext/plane', '1.0.0', 'Extends Plane Class'
 
 class Plane
   # Planes don't have an update method, this usually causes a few 'gotchas!'

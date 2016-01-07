@@ -1,3 +1,5 @@
+$simport.r('vx_crossover/core_patches/tilemap', '1.0.0', 'Crossover patch to have RGSS3 Tilemap work with RGSS2 maps')
+
 class Tilemap
   def passages
     flags

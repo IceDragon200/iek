@@ -1,4 +1,4 @@
-$simport.r('iek/win32api/keyboard/keys', '1.0.0', 'Keyboard Keys module')
+$simport.r 'iek/win32api/keyboard/keys', '1.0.0', 'Keyboard Keys module'
 
 module Win32
   class Keyboard

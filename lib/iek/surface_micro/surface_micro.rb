@@ -1,5 +1,5 @@
 #
-$simport.r('iek/surface_micro', '1.0.0', 'A smaller version of rm-macl\'s Surface')
+$simport.r 'iek/surface_micro', '1.0.0', 'A smaller version of rm-macl\'s Surface'
 
 module Mixin
   module SurfaceMicro

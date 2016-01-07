@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/tilemap', '1.0.0', 'Extends Tilemap Class')
+$simport.r 'iek/rgss3_ext/tilemap', '1.0.0', 'Extends Tilemap Class'
 
 class Tilemap
   def bitmaps=(bitmaps)

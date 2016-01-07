@@ -1,4 +1,4 @@
-$simport.r('iek/time_system', '1.0.0', 'Basic TimeSystem')
+$simport.r 'iek/time_system', '1.0.0', 'Basic TimeSystem'
 
 module IEK
   module TimeSystem

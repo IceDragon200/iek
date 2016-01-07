@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/tone', '1.0.0', 'Extends Tone Class')
+$simport.r 'iek/rgss3_ext/tone', '1.0.0', 'Extends Tone Class'
 
 class Tone
   alias :initialize_0o4 :initialize

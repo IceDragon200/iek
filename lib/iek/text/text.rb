@@ -1,4 +1,4 @@
-$simport.r('iek/text', '1.0.0', 'Text tools')
+$simport.r 'iek/text', '1.0.0', 'Text tools'
 
 class Text
   module Align

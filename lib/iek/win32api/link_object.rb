@@ -1,4 +1,4 @@
-$simport.r('iek/win32api/link_object', '1.0.0', 'Wrapper class for Win32API functions')
+$simport.r 'iek/win32api/link_object', '1.0.0', 'Wrapper class for Win32API functions'
 
 module Win32
   class LinkObject

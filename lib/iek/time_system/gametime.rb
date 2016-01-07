@@ -1,5 +1,5 @@
-$simport.r('iek/time_system/gametime', '1.0.0', 'Uses ingame clock for TimeSystem') do |h|
-  h.depend('iek/time_system')
+$simport.r 'iek/time_system/gametime', '1.0.0', 'Uses ingame clock for TimeSystem' do |h|
+  h.depend 'iek/time_system'
 end
 
 module IEK

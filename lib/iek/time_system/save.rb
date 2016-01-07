@@ -1,6 +1,6 @@
-$simport.r('iek/time_system/save', '1.0.0', 'Uses step counter clock for TimeSystem') do |h|
-  h.depend('iek/time_system', '>= 1.0.0')
-  h.depend!('iek/savable', '>= 1.0.0')
+$simport.r 'iek/time_system/save', '1.0.0', 'Uses step counter clock for TimeSystem' do |h|
+  h.depend 'iek/time_system', '>= 1.0.0'
+  h.depend! 'iek/savable', '>= 1.0.0'
 end
 
 module IEK

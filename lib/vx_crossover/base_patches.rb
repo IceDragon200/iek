@@ -6,6 +6,7 @@ class Game_Map
   def load_map(map_id)
     DataCache.load_map_by_id(@map_id)
   end
+  private :load_map
 
   def setup(map_id)
     @map_id = map_id
@@ -19,6 +20,4 @@ class Game_Map
     setup_parallax
     @need_refresh = false
   end
-
-  private :load_map
 end

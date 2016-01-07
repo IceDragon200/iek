@@ -1,9 +1,3 @@
-# Artist (Overwrites)
-# // 03/05/2012
-# // 03/05/2012
-# // Why is this here?
-# // Well I overwrote some stuff for thw Window::Base
-# // Just for organizational purposes, this is here
 class Artist
   def draw_item_name(item, x, y, enabled = true, width = 172)
     return unless item

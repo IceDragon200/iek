@@ -9,7 +9,7 @@ module ISS2
       attr_reader :viewport
 
       def initialize(viewport)
-        @logger = Logfmt::NullLogger
+        @logger = Moon::Logfmt::NullLogger
         @viewport = viewport
         @ox = 0
         @oy = 0

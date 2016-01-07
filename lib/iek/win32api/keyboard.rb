@@ -1,6 +1,6 @@
-$simport.r('iek/win32api/keyboard', '1.0.0', 'Win32 Keyboard module') do |h|
-  h.depend!('iek/win32api/keyboard/keys', '~> 1.0.0')
-  h.depend!('iek/win32api/win32/user32', '~> 1.0.0')
+$simport.r 'iek/win32api/keyboard', '1.0.0', 'Win32 Keyboard module' do |h|
+  h.depend! 'iek/win32api/keyboard/keys', '~> 1.0.0'
+  h.depend! 'iek/win32api/win32/user32', '~> 1.0.0'
 end
 
 ##

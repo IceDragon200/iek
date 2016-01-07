@@ -1,6 +1,6 @@
-$simport.r("iek/scene_splash", "1.0.0", "Splash Screen") do |h|
-  h.depend!("iek/frame_scehduler", ">= 1.0.0")
-  h.depend!("iek/frame_scehduler/scheduler_host", ">= 1.0.0")
+$simport.r 'iek/scene_splash', '1.0.0', 'Splash Screen' do |h|
+  h.depend! 'iek/frame_scehduler', '>= 1.0.0'
+  h.depend! 'iek/frame_scehduler/scheduler_host', '>= 1.0.0'
 end
 
 class Scene_Splash < Scene_Base

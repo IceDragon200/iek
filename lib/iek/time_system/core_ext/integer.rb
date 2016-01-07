@@ -1,4 +1,4 @@
-$simport.r('iek/time_system/core_ext/integer', '1.0.0', 'Integer extensions for time increments')
+$simport.r 'iek/time_system/core_ext/integer', '1.0.0', 'Integer extensions for time increments'
 
 module IEK
   module TimeSystem

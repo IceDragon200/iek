@@ -1,6 +1,4 @@
 class Game_Character
-
-  ##
   # update
   alias :iek_cmev_reg_update :update
   def update
@@ -18,11 +16,9 @@ class Game_Character
     x, y = @cmevlast
     $game_map.alert_tile(x, y, self)
   end
-
 end
 
 class Game_Map
-
   attr_reader :alert_map # Array<Array<Array<ID>>>
 
   ##

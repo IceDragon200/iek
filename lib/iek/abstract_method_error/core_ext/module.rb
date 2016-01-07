@@ -1,5 +1,5 @@
-$simport.r('iek/abstract_method_error/core_ext/module', '1.0.0', 'Module Extension') do |d|
-  d.depend!('iek/abstract_method_error', '~> 1.0.0')
+$simport.r 'iek/abstract_method_error/core_ext/module', '1.0.0', 'Module Extension' do |d|
+  d.depend! 'iek/abstract_method_error', '~> 1.0.0'
 end
 
 class Module

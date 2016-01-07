@@ -1,4 +1,4 @@
-$simport.r('iek/sprite_icon', '1.0.0', 'Generic Sprite for IconSet')
+$simport.r 'iek/sprite_icon', '1.0.0', 'Generic Sprite for IconSet'
 
 # There are plenty of situations where you need a simple Sprite_Icon class
 class Sprite_Icon < Sprite_Base

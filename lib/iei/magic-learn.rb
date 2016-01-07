@@ -5,11 +5,11 @@ $simport.r 'iei/magic_learn', '1.0.0', 'IEI Magic Learn'
 
 module IEI
   module MagicLearn
-    module MixIns ; end
+    module Mixins ; end
   end
 end
 
-module IEI::MagicLearn::MixIns::Battler
+module IEI::MagicLearn::Mixins::Battler
   def pre_init_iei
     super
     @magiclearn = {}

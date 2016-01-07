@@ -1,10 +1,4 @@
-#
-# EDOS/src/artist/artist/artist-files.rb
-#   dc 12/??/2011
-#   dm 27/06/2013
-#
 class Artist::Files < Artist
-
   def draw_party_characters(x, y, index)
     header = DataManager.load_header(index)
     return unless header
@@ -18,5 +12,4 @@ class Artist::Files < Artist
     return unless header
     draw_text(x, y, width, 14, header[:playtime_s], align)
   end
-
 end

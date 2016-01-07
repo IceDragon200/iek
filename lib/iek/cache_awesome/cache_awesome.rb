@@ -16,7 +16,7 @@ module Cache
   # init
   def init
     @root = 'Graphics'
-    @logger = Logfmt::NullLogger
+    @logger = Moon::Logfmt::NullLogger
     @loader = {}
     @cache = {}
   end

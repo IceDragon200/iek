@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/color', '1.0.0', 'Extends Color Class')
+$simport.r 'iek/rgss3_ext/color', '1.0.0', 'Extends Color Class'
 
 class Color
   alias :initialize_0o4 :initialize

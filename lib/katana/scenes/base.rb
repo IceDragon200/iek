@@ -18,7 +18,7 @@ module Katana
       attr_accessor :data_manager
 
       def initialize
-        @logger = Logfmt::NullLogger
+        @logger = Moon::Logfmt::NullLogger
         @scene_manager = nil
         @data_manager = nil
       end

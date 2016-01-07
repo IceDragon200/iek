@@ -29,14 +29,12 @@ class Artist
     return self;
   end
 
-  def draw_item_element_res(item,x,y,w=96,h=6)
+  def draw_item_element_res(item, x, y, w = 96, h = 6)
     return unless ExDatabase.ex_equip_item?(item)
-    rect, rate = nil, nil # // Declaration . x .
     for i in 1..6 # // . x . Only the 6 main elements
       rect = Rect.new(x, y + (h * (i - 1)), w, h)
       rate = item.element_residue_rate(i)
       colors = DrawExt.quick_bar_colors(element_color(i))
-
       draw_gauge_ext(rect, rate, colors)
     end
   end

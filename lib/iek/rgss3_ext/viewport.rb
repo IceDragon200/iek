@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/viewport', '1.0.0', 'Extends Viewport Class')
+$simport.r 'iek/rgss3_ext/viewport', '1.0.0', 'Extends Viewport Class'
 
 class Viewport
   alias :dispose_wo_flag :dispose

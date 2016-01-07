@@ -10,7 +10,7 @@ class Game_Map
     @tileset_id = @map.tileset_id
     @display_x = 0
     @display_y = 0
-    referesh_vehicles
+    refresh_vehicles
     setup_events
     setup_scroll
     setup_parallax

@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/table', '1.0.0', 'Extends Table Class')
+$simport.r 'iek/rgss3_ext/table', '1.0.0', 'Extends Table Class'
 
 class Table
   # @return [Rect]

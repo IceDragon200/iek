@@ -65,7 +65,7 @@ module IEI::MagicEquip::Include
   end
 end
 
-class Window::MagicEqCommand < Window::Command
+class Window::MagicEquipCommand < Window::Command
   attr_reader :unit
 
   def window_width
@@ -168,7 +168,7 @@ module Scene
     end
 
     def create_command_window
-      @command_window = Window::MagicEqCommand.new(@help_window.x,@help_window.y2)
+      @command_window = Window::MagicEquipCommand.new(@help_window.x,@help_window.y2)
       @command_window.help_window = @help_window
       @command_window.unit = @unit
       @command_window.set_handler :equip   , method(:command_equip)
@@ -237,7 +237,7 @@ module Scene
 
     def command_optimize
       @status_window.unit.optimize_skill_equips
-      pop_quick_text_c "Optimize Complete"
+      pop_quick_text_centered "Optimize Complete"
       @command_window.activate
     end
 

@@ -1,3 +1,5 @@
+$simport.r('katana/scene_manager', '1.0.0', 'Specialized SceneManager for the Katana framework')
+
 module Katana
   class SceneManagerPatch
     attr_reader :scene_manager
@@ -17,8 +19,8 @@ module Katana
     attr_accessor :stack
     attr_reader :scene
 
-    def initialize
-      @logger = Logfmt::NullLogger
+    def initialize(options = {})
+      @logger = options.fetch(:logger, Moon::Logfmt::NullLogger)
       @patches = [SceneManagerPatch.new(self)]
       @clk = Katana::Clock.new
       @stack = []

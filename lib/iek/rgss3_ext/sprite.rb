@@ -1,4 +1,4 @@
-$simport.r('iek/rgss3_ext/sprite', '1.0.0', 'Extends Sprite Class')
+$simport.r 'iek/rgss3_ext/sprite', '1.0.0', 'Extends Sprite Class'
 
 class Sprite
   # @return [Rect]

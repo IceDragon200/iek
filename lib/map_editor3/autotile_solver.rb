@@ -3,11 +3,12 @@ module MapEditor3
     include TileData::Helper
 
     def initialize
-      @log = Logfmt::NULLOUT
+      @log = Moon::Logfmt::Logger.new
+      @log.io = NullIO::OUT
     end
 
     def yield_sourrounding_tiles(data, x, y, z)
-      return to_enum(:yield_sourrounding_tiles) unless block_given?
+      return to_enum(:yield_sourrounding_tiles, data, x, y, z) unless block_given?
       yield data[x - 1, y - 1, z], x - 1, y - 1, z
       yield data[x, y - 1, z], x, y - 1, z
       yield data[x + 1, y - 1, z], x + 1, y - 1, z
@@ -65,7 +66,7 @@ module MapEditor3
 
     # solves the circular offset using the provided corners
     def circular_offset(c, o)
-      @log.puts "circular_offset: #{c}, #{o}"
+      @log.write msg: "circular_offset: #{c}, #{o}"
       s = c.size
       t1 = (o) % s
       t2 = (o + 1) % s
@@ -100,11 +101,11 @@ module MapEditor3
         result += 0
       elsif all_eq?(a, 1)
         # adjacent tiles are unaffected
-        @log.puts "corner_solver: #{c}"
+        @log.write msg: "corner_solver: #{c}"
         result += bpack(c) ^ 0b1111
       else
         offset = 16
-        @log.puts "adjacent_solver: #{a}"
+        @log.write msg: "adjacent_solver: #{a}"
         case bpack(a.reverse)
         # .1.
         # 0 1
@@ -269,7 +270,7 @@ module MapEditor3
     end
 
     def solve_autotile_a1(data, x, y, z, tile_id)
-      @log.puts "solving an A1 tile: #{tile_id}"
+      @log.write msg: "solving an A1 tile: #{tile_id}"
       if is_a1_waterfall?(tile_id)
         solve_autotile_waterfall(data, x, y, tile_id)
       else
@@ -278,21 +279,21 @@ module MapEditor3
     end
 
     def solve_autotile_a2(data, x, y, z, tile_id)
-      @log.puts "solving an A2 tile: #{tile_id}"
+      @log.write msg: "solving an A2 tile: #{tile_id}"
       solve_autotile_ground(data, x, y, z, tile_id)
     end
 
     def solve_autotile_a3(data, x, y, z, tile_id)
-      @log.puts "solving an A3 tile: #{tile_id}"
+      @log.write msg: "solving an A3 tile: #{tile_id}"
       solve_autotile_wall(data, x, y, z, tile_id)
     end
 
     def solve_autotile_a4(data, x, y, z, tile_id)
       if is_a4_ceiling?(tile_id)
-        @log.puts "solving an A4 (ceiling) tile: #{tile_id}"
+        @log.write msg: "solving an A4 (ceiling) tile: #{tile_id}"
         solve_autotile_ground(data, x, y, z, tile_id)
       else
-        @log.puts "solving an A4 (wall) tile: #{tile_id}"
+        @log.write msg: "solving an A4 (wall) tile: #{tile_id}"
         solve_autotile_wall(data, x, y, z, tile_id)
       end
     end
@@ -311,7 +312,7 @@ module MapEditor3
         when TileData::TILE_A4_RANGE
           solve_autotile_a4(data, x, y, z, tile_id)
         end
-        @log.puts "solved: (base: #{normalize_tile_id(tile_id)}) #{tile_id} as #{r}"
+        @log.write msg: "solved: (base: #{normalize_tile_id(tile_id)}) #{tile_id} as #{r}"
         r
       end
     end

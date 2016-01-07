@@ -1,3 +1,5 @@
+require 'vxa_make/enums'
+
 module MakeFeature
   include Enums::FeatureConstants
   include Enums::ParamConstants
@@ -7,6 +9,10 @@ module MakeFeature
 
   def feature(feature_id, data_id, value = 0)
     RPG::BaseItem::Feature.new(feature_id, data_id, value.to_f)
+  end
+
+  def null
+    feature(0, 0, 0.0)
   end
 
   # // And More @_@ - 02/24/2012
@@ -274,12 +280,12 @@ module MakeFeature
     feature(FEATURE_EQUIP_SEAL, n)
   end
 
-  def slot_type(n=0)
+  def slot_type(n = 0)
     feature(FEATURE_SLOT_TYPE, n, 0)
   end
 
-  def action_plus(n)
-    feature(FEATURE_ACTION_PLUS, 0, n)
+  def action_plus(rate, n)
+    feature(FEATURE_ACTION_PLUS, rate, n)
   end
 
   # // Special

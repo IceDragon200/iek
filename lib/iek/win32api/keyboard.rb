@@ -3,17 +3,14 @@ $simport.r 'iek/win32api/keyboard', '1.0.0', 'Win32 Keyboard module' do |h|
   h.depend! 'iek/win32api/win32/user32', '~> 1.0.0'
 end
 
-##
 # Windows compliant Keyboard class for RPG Maker VX Ace
 # Provides a bare minimal API
 module Win32
   class Keyboard
-    ##
     # Defines a Hash with all the VK_* key codes by lower cased Symbol(s)
     # [Hash<Symbol, Integer>] SYMBOL_TO_KEY
     SYMBOL_TO_KEY = Hash[Keyboard::Keys.map { |k, v| [k.to_s.to_sym, v] }].freeze
 
-    ##
     # Initialize Keyboard module
     def initialize
       @user32 = Win32::User32.new
@@ -52,10 +49,11 @@ module Win32
     #
     # @param [String, Symbol, Integer] obj
     # @return [Boolean]
-    def press?(obj)
+    def pressed?(obj)
       key = convert_key(obj)
       return @key_state[key]
     end
+    alias_method :press?, :pressed?
 
     # Updates the @key_state Array by grabbing the values from the OS
     #

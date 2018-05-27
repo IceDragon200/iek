@@ -1,12 +1,5 @@
-#-define HDR_TYP :type=>"class"
-#-define HDR_GNM :name=>"IEI - Scopius"
-#-define HDR_GDC :dc=>"02/28/2012"
-#-define HDR_GDM :dm=>"05/26/2012"
-#-define HDR_GAUT :author=>"IceDragon"
-#-define HDR_VER :version=>"1.0"
-#-inject gen_script_header HDR_TYP,HDR_GNM,HDR_GAUT,HDR_GDC,HDR_GDM,HDR_VER
-$simport.r 'iei/scopius', '1.0.0', 'IEI Loginix'
-#-inject gen_class_header 'RPG::UsableItem::Scope'
+$simport.r 'iei/scopius', '1.0.0', 'IEI Scopius'
+
 class RPG::UsableItem
   class Scope
     class Filter
@@ -137,153 +130,189 @@ class RPG::UsableItem
       end
       result
     end
-    def target_number()
+
+    def target_number
       @scope == SCOPE_RANDOM ? @params[0] : 0
     end
+
     # // State
     def dead?
       @filters.include?(FILTER_DEAD)
     end
+
     def alive?
       @filters.include?(FILTER_ALIVE)
     end
+
     def any_state?
       @filters.include?(FILTER_ANY)
     end
+
     # // Target Group
     def friend?
       @code == CODE_FRIENDS
     end
+
     def opponent?
       @code == CODE_OPPONENTS
     end
+
     def everyone?
       @code == CODE_EVERYONE
     end
+
     def none?
       @code == CODE_NONE
     end
-    def user?()
+
+    def user?
       @code == CODE_USER
     end
+
     def global?
       @code == CODE_GLOBAL
     end
+
     def team?
       all? && (opponent? || friend?)
     end
+
     # // Scope Checks
     def single?
       @scope == SCOPE_SINGLE
     end
+
     def random?
       @scope == SCOPE_RANDOM
     end
+
     def all?
       @scope == SCOPE_ALL
     end
-    def need_selection?()
+
+    def need_selection?
       #[SCOPE_SINGLE].include?(@scope) # // >x< If I ever expand it
       @scope == SCOPE_SINGLE
     end
+
     def param(n)
       @params[n]
     end
+
     attr_accessor :code
     attr_accessor :scope
     attr_accessor :filters
     attr_accessor :params
   end
-  def convert_scope()
+
+  def convert_scope
     @scope = Scope[@scope] unless @scope.is_a?(Scope)
     @scope
   end
-  def scope()
-    convert_scope()
+
+  def scope
+    convert_scope
   end
+
   # // Legacy Support
-  def for_opponent?()
+  def for_opponent?
     scope.opponent?
   end
-  def for_friend?()
+
+  def for_friend?
     scope.friend?
   end
+
   def for_dead_friend?
     scope.dead? && scope.friend?
   end
+
   def for_user?
-    scope.user?()
+    scope.user?
   end
+
   def for_one?
-    scope.single?()
+    scope.single?
   end
+
   def for_random?
-    scope.random?()
+    scope.random?
   end
+
   def for_all?
-    scope.all?()
+    scope.all?
   end
+
   def need_selection?
-    scope.need_selection?()
+    scope.need_selection?
   end
   def number_of_targets
     for_random? ? scope.params[0] : 0
   end
-  def for_everyone?()
+
+  def for_everyone?
     scope.everyone?
   end
-  def for_everyone_alive?()
-    for_everyone?() && scope.alive?()
+
+  def for_everyone_alive?
+    for_everyone? && scope.alive?
   end
-  def for_everyone_dead?()
-    for_everyone?() && scope.dead?()
+
+  def for_everyone_dead?
+    for_everyone? && scope.dead?
   end
-  def for_global?()
-    scope.global?()
+
+  def for_global?
+    scope.global?
   end
 end
-#-inject gen_class_header 'Game::Action'
+
 class Game::Action
   def get_scope_targets_basic(scope)
     #consts = RPG::UsableItem::Scope::Constants
     result = []
-    if(scope.none?())
+    if scope.none?
       result = []
-    elsif(scope.user?())
+    elsif scope.user?
       result = [@subject]
-    elsif(scope.friend?())
+    elsif scope.friend?
       result = friends_unit.members
-    elsif(scope.opponent?())
+    elsif scope.opponent?
       result = opponents_unit.members
-    elsif(scope.everyone?())
+    elsif scope.everyone?
       result = friends_unit.members + opponents_unit.members
-    elsif(scope.global?())
+    elsif scope.global?
       result = [_map.global]
     end
     result.uniq
   end
+
   def adjust_scope_targets(scope, targets)
     # // Filtering
     result = scope.adjust_targets(effect_select_targets(targets),@subject)
-    if(scope.single?)
+    if scope.single?
       result = select_single_targets(result)
       result *= 1 + (attack? ? subject.atk_times_add.to_i : 0)
-    elsif(scope.random?())
+    elsif scope.random?
       result = (0...scope.target_number).map{result.sample}
-    elsif(scope.all?())
+    elsif scope.all?
       result = Array.new(result)
     end
     result
   end
+
   def get_scope_targets(scope)
     adjust_scope_targets(scope, get_scope_targets_basic(scope))
   end
+
   def effect_select_targets(targets)
     targets
   end unless method_defined? :effect_select_targets
+
   def select_single_targets(targets)
     [targets[@target_index]]
   end unless method_defined? :select_single_targets
+
   def make_targets()
     if !forcing && subject.confusion?
       [confusion_target]
@@ -292,4 +321,3 @@ class Game::Action
     end
   end
 end
-#-inject gen_script_footer

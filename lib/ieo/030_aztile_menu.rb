@@ -220,7 +220,6 @@ end
 # Scene_Menu - IEO030-Lunatic
 #==============================================================================#
 class Scene_Menu < Scene_Base
-
   #--------------------------------------------------------------------------#
   # * new method :menu_command
   #--------------------------------------------------------------------------#
@@ -362,7 +361,6 @@ class Scene_Menu < Scene_Base
   def end_swap_window
     @partyswap_window.dispose unless @partyswap_window.nil?
   end
-
 end
 
 #==============================================================================#
@@ -370,10 +368,7 @@ end
 #==============================================================================#
 module IEO
   module Vocab
-
-    module_function
-
-    def menu(command)
+    def self.menu(command)
       case command
       when :item    ; return ::Vocab.item
       when :skill   ; return ::Vocab.skill
@@ -386,7 +381,6 @@ module IEO
       else          ; return ""
       end
     end
-
   end
 end
 
@@ -395,8 +389,9 @@ end
 #==============================================================================#
 module IEO
   module Icon
-    module_function
-    def menu(command) ; return 0 end
+    def self.menu(command)
+      return 0
+    end
   end
 end
 
@@ -404,11 +399,10 @@ end
 # ** Game_System
 #==============================================================================#
 class Game_System
-
   #--------------------------------------------------------------------------#
   # * Public Instance Variables
   #--------------------------------------------------------------------------#
-  attr_accessor :menu_layout
+  attr_writer :menu_layout
   attr_accessor :ips_windowsize
   attr_accessor :party_draw_style
   attr_accessor :reserve_exprate_var
@@ -417,15 +411,17 @@ class Game_System
   # * alias method :initialize
   #--------------------------------------------------------------------------#
   alias :ieo030_gs_initialize :initialize unless $@
-  def initialize()
+  def initialize
     ieo030_gs_initialize()
     a = IEO::MENU_SYSTEM
-    @menu_layout = a::MENU_LAYOUT.clone
     @ips_windowsize = Rect.new(a::IPS_WINX, a::IPS_WINY, a::IPS_WINWIDTH, a::IPS_WINHEIGHT)
     @party_draw_style = a::PARTY_DRAW_STYLE
     @reserve_exprate_var = a::RESERVE_EXP_VAR
   end
 
+  def menu_layout
+    @menu_layout ||= IEO::MENU_SYSTEM::MENU_LAYOUT.clone
+  end
 end
 
 #==============================================================================#
@@ -752,7 +748,7 @@ class Window_MenuCommand < Window_Command
     rect.width = (contents.width + @spacing) / @column_max - @spacing
     rect.height = WLH
     rect.x = index % @column_max * (rect.width + @spacing)
-    rect.y = index / @column_max * WLH
+    rect.y = (index / @column_max * WLH)
     if $imported["IEO-BugFixesUpgrades"]
       if IEO::UPGRADE::ADAPTIVE_CURSOR
         if adapt
@@ -784,14 +780,12 @@ class Window_MenuCommand < Window_Command
     end
     self.contents.draw_text(rect, IEO::Vocab.menu( @commands[index] ))
   end
-
 end
 
 #==============================================================================#
 # Window_MenuPartySwap
 #==============================================================================#
 class Window_MenuPartySwap < Window_Selectable
-
   #--------------------------------------------------------------------------#
   # * Constants
   #--------------------------------------------------------------------------#
@@ -921,14 +915,12 @@ class Window_MenuPartySwap < Window_Selectable
     src_rect = Rect.new((n%4*3+1)*cw, (n/4*4)*ch, cw, ch)
     self.contents.blt(x - cw / 2, y - ch, bitmap, src_rect, enabled ? 255 : 128)
   end
-
 end
 
 #==============================================================================#
 # ** Scene_Title
 #==============================================================================#
 class Scene_Title < Scene_Base
-
   #--------------------------------------------------------------------------#
   # * alias-method :create_game_object
   #--------------------------------------------------------------------------#
@@ -944,18 +936,16 @@ class Scene_Title < Scene_Base
   def load_ieo030_objects
     $game_variables[$game_system.reserve_exprate_var] = IEO::MENU_SYSTEM::RESERVE_EXP_RATE
   end
-
 end
 
 #==============================================================================#
 # ** Scene_Menu
 #==============================================================================#
 class Scene_Menu < Scene_Base
-
   #--------------------------------------------------------------------------#
   # * overwrite method :create_command_window
   #--------------------------------------------------------------------------#
-  def create_command_window()
+  def create_command_window
     coms = $game_system.menu_layout
     @command_window = Window_MenuCommand.new(160, coms)
     @command_window.index = @menu_index
@@ -964,8 +954,8 @@ class Scene_Menu < Scene_Base
   #--------------------------------------------------------------------------#
   # * new method :return_scene
   #--------------------------------------------------------------------------#
-  def return_scene()
-    $scene = Scene_Map.new()
+  def return_scene
+    $scene = Scene_Map.new
   end
 
   #--------------------------------------------------------------------------#
@@ -1019,7 +1009,6 @@ class Scene_Menu < Scene_Base
       menu_command(com)
     end
   end
-
 end
 
 #==============================================================================#
@@ -1104,7 +1093,6 @@ end
 # Scene_Battle
 #==============================================================================#
 class Scene_Battle < Scene_Base
-
   #--------------------------------------------------------------------------#
   # * overwrite method :display_level_up
   #--------------------------------------------------------------------------#
@@ -1121,9 +1109,4 @@ class Scene_Battle < Scene_Base
     end
     wait_for_message
   end
-
 end
-
-#=*==========================================================================*=#
-# ** END OF FILE
-#=*==========================================================================*=#

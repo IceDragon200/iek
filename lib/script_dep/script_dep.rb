@@ -8,7 +8,7 @@
 #   checking for their dependencies.
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class ScriptDep
-  VERSION = '1.0.0'
+  VERSION = '1.1.0'
 
   class Conflict < RuntimeError
     def initialize(id, version = nil)
@@ -111,15 +111,6 @@ class ScriptDep
     private :refresh
   end
 
-  ##
-  # @param [String] id
-  #   @example iek/my_awesome_script
-  # @param [String] name
-  #   @example My Awesome Script
-  # @param [String] description
-  #   @example This blows stuff up
-  # @param [String] version
-  #   @example "0.1.0"
   class ScriptHeader
     Dependency = Struct.new(:id, :version)
 
@@ -130,18 +121,28 @@ class ScriptDep
     attr_accessor :version
     attr_accessor :dependencies
     attr_accessor :conflicts
+    attr_accessor :provisions
 
+    # @param [String] id
+    #   @example iek/my_awesome_script
+    # @param [String] name
+    #   @example My Awesome Script
+    # @param [String] description
+    #   @example This blows stuff up
+    # @param [String] version
+    #   @example "0.1.0"
     def initialize(id, name, description, version)
       @id, @name, @description, @version  = id, name, description, version
       @dependencies = []
       @conflicts = []
+      @provisions = []
     end
 
-    def depend(id, version=nil)
+    def depend(id, version = nil)
       @dependencies << Dependency.new(id, version)
     end
 
-    def depend!(id, version=nil)
+    def depend!(id, version = nil)
       depend(id, version)
       @dep.depend!(id, version) if @dep
     end
@@ -155,11 +156,16 @@ class ScriptDep
       @dep.conflict!(id, version) if @dep
     end
 
+    def provides(id, version = nil)
+      conflict! id, version
+      @provisions << Dependency.new(id, version)
+    end
+
     def to_s
       if id != name
-        "#{id}(#{version}) #{name}: #{description}"
+        "#{id} (#{version}) #{name} - #{description}"
       else
-        "#{id}(#{version}): #{description}"
+        "#{id} (#{version}) - #{description}"
       end
     end
   end
@@ -170,10 +176,18 @@ class ScriptDep
     register('__script_dep__', VERSION, 'Script Manager')
   end
 
-  def register(id, version_str, description = '')
+  def registered?(id)
+    @data.has_key?(id)
+  end
+
+  def check_registered(id)
     if head = @data[id]
       raise RegisterError, "#{id} has been registered as #{head}"
     end
+  end
+
+  def register(id, version_str, description = '')
+    check_registered id
 
     head = ScriptHeader.new(id, id, description, Version.new(version_str))
 
@@ -182,12 +196,12 @@ class ScriptDep
     yield head if block_given?
 
     @data[id] = head
+    head.provisions.each do |dep|
+      check_registered dep.id
+      @data[dep.id] = head
+    end
 
     id
-  end
-
-  def registered?(id)
-    @data.has_key?(id)
   end
 
   def valid?(id, version_str)

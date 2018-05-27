@@ -1,4 +1,3 @@
-#encoding:UTF-8
 # ISS020 - Spawn Event 1.0
 #==============================================================================#
 # ** ISS - Spawn Event
@@ -11,18 +10,23 @@
 # ** Version       : 1.0
 # ** Requires      : ISS000 - Core(1.9 or above)
 #==============================================================================#
-($imported ||= {})["ISS-SpawnEvent"] = true
+$simport.r 'iss/spawn_event', '1.0.0', 'Event Spawning' do |d|
+  d.depend! 'forma', '~> 1.0'
+  d.depend! 'iss/core', '>= 1.9'
+end
 #==============================================================================#
 # ** ISS::SpawnEvent
 #==============================================================================#
 module ISS
   install_script(20, :map)
   module SpawnEvent
-    SPAWN_MAP = 2
-    SPAWN_OFFSET = 700
+    CONFIG = Forma.configure('iss/spawn_event') do |config|
+      config.default(:spawn_map, 2)
+      config.default(:spawn_offset, 200)
+    end
 
     def self.get_event(eid, map_id = $game_map.map_id)
-      $game_map.get_event(SPAWN_MAP, eid)
+      $game_map.get_event(CONFIG[:spawn_map], eid)
     end
 
     def self.spawn_event(eid)
@@ -118,7 +122,7 @@ class Game_Map
   # * new-method :spawn_event
   #--------------------------------------------------------------------------#
   def spawn_event(rpgevr)
-    event_id = ISS::SpawnEvent::SPAWN_OFFSET
+    event_id = ISS::SpawnEvent::CONFIG[:spawn_offset]
     while @events[event_id]
       event_id += 1
     end

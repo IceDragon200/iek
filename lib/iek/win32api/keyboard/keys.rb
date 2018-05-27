@@ -2,9 +2,8 @@ $simport.r 'iek/win32api/keyboard/keys', '1.0.0', 'Keyboard Keys module'
 
 module Win32
   class Keyboard
-  ##
-  # A list of all the VK_* key codes from the Windows library
-  #   http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
+    # A list of all the VK_* key codes from the Windows library
+    #   http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
     module Keys
       KEYS = []
 
@@ -271,6 +270,9 @@ module Win32
         KEYS << [k, const_get(k)]
       end
       KEYS.freeze
+
+      NUMBERS = [NUM0, NUM1, NUM2, NUM3, NUM4, NUM5, NUM6, NUM7, NUM8, NUM9].freeze
+      NUMPAD = [NUMPAD0, NUMPAD1, NUMPAD2, NUMPAD3, NUMPAD4, NUMPAD5, NUMPAD6, NUMPAD7, NUMPAD8, NUMPAD9].freeze
 
       extend Enumerable
 

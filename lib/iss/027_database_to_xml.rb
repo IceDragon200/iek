@@ -16,7 +16,7 @@
 # ** ISS::DatabaseToXml
 #==============================================================================#
 module ISS
-  install_script(27, :system) if $imported["ISS-Core"]
+  install_script(27, :system) if $simport.valid?('iss/core', '>= 1.9')
   module DatabaseToXml
     DATABASE_LOCATION = 'Data/Database'
     FileUtils.mkdir_p(DATABASE_LOCATION)

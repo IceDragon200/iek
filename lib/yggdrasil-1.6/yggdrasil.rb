@@ -1,5 +1,3 @@
-#encoding:UTF-8
-# ■Yggdrasil 1x6
 #==============================================================================#
 # ** Yggdrasil 1x6 - Engine (Full)
 #------------------------------------------------------------------------------#
@@ -7,8 +5,8 @@
 # ** Script-Status : CBS (Custom Battle System)
 # ** Script Type   : Engine (ABS Base)
 # ** Date Created  : 10/11/2010
-# ** Date Modified : 12/02/2011
-# ** Version       : 1.6b
+# ** Date Modified : 12/03/2011
+# ** Version       : 1.6c
 #------------------------------------------------------------------------------#
 #==============================================================================#
 # ** INTRODUCTION
@@ -89,10 +87,32 @@
 #                         ["GUARD", [frames]]
 #                         guard: frames
 #                         While Guarding all other actions are blocked.
-#
+#                         You can make certain skills and items guardable (can be guarded against)
+#                         <guardable>
 #                     CLEAN:
 #                       Rewrote Introduction
 #                       Removed unused constants
+# 12/03/2011 - V1.6c  Added 2 new features, fixed 4 bug, 2 changes
+#                     NEW:
+#                       Added Equipment icons for enemies
+#                         <use equipment> Very important
+#                         <equip icon x: wep y>
+#                         <equip icon x: arm y>
+#                         <equip icon x: skill y>
+#                         <equip icon x: item y>
+#                         <equip icon x: y>
+#                       Added "AFFECTED" target type for "TARGET" action
+#                         This returns a list of the targets that where last
+#                         affected, by a _effect
+#
+#                     BUGS:
+#                       Marshalling errors when you tried to save the game, while a poptext was present
+#                       target_selection would malfunction on game reload
+#                       Fixed multiple referencing errors that would occur on game reload
+#                       roam_xy had an error in it resulting only 1 event being sent back
+#                     CHANGES:
+#                       Handles are now refreshed on game load to fix some errors
+#                       Equipment handles have been stripped of there parents
 #
 #------------------------------------------------------------------------------#
 #==============================================================================#
@@ -109,6 +129,8 @@
 #  I will split the script (AGAIN) later, to fix this problem.
 #
 #------------------------------------------------------------------------------#
+$imported ||= {}
+$simport.r 'yggdrasil', '1.6.0', 'A Switchable ABS Battle System'
 #==============================================================================#
 # ** YGG
 #==============================================================================#
@@ -164,7 +186,7 @@ module YGG
   #--------------------------------------------------------------------------#
   # Should the ranges for attacks/skills/etc be drawn?
   #--------------------------------------------------------------------------#
-    DRAW_RANGES = true
+    DRAW_RANGES = false
 
   #--------------------------------------------------------------------------#
   # * ALL_DEAD_GAMEOVER
@@ -481,6 +503,10 @@ module YGG
 # oo========================================================================oo #
 
 # oo========================================================================oo #
+  ACTION_LIST["HIT_ANIM"] = [
+    ["TARGET"       , ["AFFECTED"]                    ],
+    ["ANIMATION"    , [171, "TARGETS", "WILD"]        ]
+  ]
 # // Normal Attack # For Default
   ACTION_LIST["NULL_ACTION"] = []
 
@@ -489,7 +515,8 @@ module YGG
     ["TARGET"       , ["RANGE"]                       ],
     ["SUBTARGET"    , ["ALLIES"]                      ],
     ["ANIMATION"    , ["ATTACK", "POS", "WILD", 0, 1] ],
-    ["ATTACK EFFECT", ["USER", "TARGETS"]             ]
+    ["ATTACK EFFECT", ["USER", "TARGETS"]             ],
+    ["ACTION"       , ["HIT_ANIM"]                    ]
   ]
 
   ACTION_LIST["GUARD_ACTION"] = [
@@ -513,7 +540,8 @@ module YGG
     ["TARGET"       , ["RANGE"]                       ],
     ["SUBTARGET"    , ["ALLIES"]                      ],
     ["ANIMATION"    , ["ATTACK", "POS", "WILD", 0, 1] ],
-    ["ATTACK EFFECT", ["USER", "TARGETS"]             ]
+    ["ATTACK EFFECT", ["USER", "TARGETS"]             ],
+    ["ACTION"       , ["HIT_ANIM"]                    ]
   ]
 
   ACTION_LIST["GUARD_ACTION_EN"] = [
@@ -811,41 +839,116 @@ module YGG
 end
 
 #==============================================================================#
-# ** Input # // DONT MESS WITH THIS
+# ** Color
 #==============================================================================#
-module Input
+class Color
+
   #--------------------------------------------------------------------------#
-  # * Constants - Created by OriginalWij and Yanfly
+  # * overwrite-method :to_a
   #--------------------------------------------------------------------------#
-  LETTERS = {}
-  LETTERS['A'] = 65; LETTERS['B'] = 66; LETTERS['C'] = 67; LETTERS['D'] = 68
-  LETTERS['E'] = 69; LETTERS['F'] = 70; LETTERS['G'] = 71; LETTERS['H'] = 72
-  LETTERS['I'] = 73; LETTERS['J'] = 74; LETTERS['K'] = 75; LETTERS['L'] = 76
-  LETTERS['M'] = 77; LETTERS['N'] = 78; LETTERS['O'] = 79; LETTERS['P'] = 80
-  LETTERS['Q'] = 81; LETTERS['R'] = 82; LETTERS['S'] = 83; LETTERS['T'] = 84
-  LETTERS['U'] = 85; LETTERS['V'] = 86; LETTERS['W'] = 87; LETTERS['X'] = 88
-  LETTERS['Y'] = 89; LETTERS['Z'] = 90
-  NUMBERS = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57]
-  NUMPAD = [96, 97, 98, 99, 100, 101, 102, 103, 104, 105]
-  BACK   = 138; ENTER  = 143; SPACE  = 32;  SCOLON = 186; ESC    = 157
-  QUOTE  = 222; EQUALS = 187; COMMA  = 188; USCORE = 189; PERIOD = 190
-  SLASH  = 191; LBRACE = 219; RBRACE = 221; BSLASH = 220; TILDE  = 192
-  F10    = 121; F11    = 122; CAPS   = 20;  NMUL   = 106; NPLUS  = 107
-  NSEP   = 108; NMINUS = 109; NDECI  = 110; NDIV   = 111; Extras =
-  [USCORE, EQUALS, LBRACE, RBRACE, BSLASH, SCOLON, QUOTE, COMMA, PERIOD, SLASH,
-   NMUL, NPLUS, NSEP, NMINUS, NDECI, NDIV]
+  def to_a()
+    return self.red, self.green, self.blue, self.alpha
+  end
+
+end
+
+#==============================================================================#
+# ** YGG
+#==============================================================================#
+module YGG
+
+  #--------------------------------------------------------------------------#
+  # * new-method :__dump_font
+  #--------------------------------------------------------------------------#
+  def self.__dump_font( font )
+    color = Color.new( 0, 0, 0 )
+    color.set( *font.color.to_a )
+    shad_color = Color.new( 0, 0, 0 )
+    shad_color.set( *font.shadow_color.to_a )
+    return Marshal.dump(
+    {
+      :color        => color,
+      :shad_color   => shad_color,
+      :name         => font.name.to_a.clone,
+      :size         => font.size.to_i,
+      :bold         => font.bold,
+      :italic       => font.italic,
+      :shadow       => font.shadow,
+    } )
+  end
+
+end
+
+#==============================================================================#
+# ** Font
+#==============================================================================#
+class Font
+
+  #--------------------------------------------------------------------------#
+  # * Public Instance Variable(s)
+  #--------------------------------------------------------------------------#
+  attr_writer :shadow_color
+
+  #--------------------------------------------------------------------------#
+  # * new-method :shadow_color
+  #--------------------------------------------------------------------------#
+  def shadow_color()
+    @shadow_color ||= Color.new( 0, 0, 0 )
+    return @shadow_color
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :_dump
+  #--------------------------------------------------------------------------#
+  def _dump( depth )
+    return YGG.__dump_font( self )
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-class-method :_load
+  #--------------------------------------------------------------------------#
+  def self._load( str )
+    settings          = Marshal.load( str )
+    font              = ::Font.new()
+    font.color        = settings[:color]
+    font.shadow_color = settings[:shad_color]
+    font.name         = settings[:name]
+    font.size         = settings[:size]
+    font.bold         = settings[:bold]
+    font.italic       = settings[:italic]
+    font.shadow       = settings[:shadow]
+    return font
+  end
+
+end
+
+require_relative 'util/keys'
+
+module YGG
+  def self.player_keys
+    @player_keys ||= begin
+      keys = YGG::Util::Keys.new
+      keys.add(Win32::Keyboard::Keys::A)
+      keys.add(Win32::Keyboard::Keys::D)
+      keys.add(Win32::Keyboard::Keys::S)
+      Win32::Keyboard::Keys::NUMBERS.each do |num|
+        keys.add(num)
+      end
+      ::Input.components.push(keys)
+      keys
+    end
+  end
 end
 
 #==============================================================================#
 # ** YGG::MixIns::Player (YGG_PlayerInputConfig)
 #==============================================================================#
 module YGG::MixIns::Player
-
   #--------------------------------------------------------------------------#
   # * new-method :get_obj_actions
   #--------------------------------------------------------------------------#
-  def get_obj_actions( obj, id )
-    return [],[] if obj.nil?
+  def get_obj_actions(obj, id)
+    return [], [] if obj.nil?
     return obj.ygg_actions[id].to_a, obj.ygg_pre_actions[id].to_a
   end
 
@@ -857,13 +960,13 @@ module YGG::MixIns::Player
     return if $game_map.interpreter.running?
     return if ygg_battler.nil?
     if @guard_time > 0
-      @guard_time += 1 if Input.press?( Input::LETTERS["D"] )
+      @guard_time += 1 if YGG.player_keys.pressed?(Win32::Keyboard::Keys::D)
       return
     end
     return if @action_handle.busy?
     acthand_ret = ygg_attack_input1              # // ASD Input
-    acthand_ret = ygg_attack_input2( acthand_ret ) # // Skill Input 1..5
-    ygg_attack_input3( acthand_ret )               # // Item Input 6..9 and 0
+    acthand_ret = ygg_attack_input2(acthand_ret) # // Skill Input 1..5
+    ygg_attack_input3(acthand_ret)               # // Item Input 6..9 and 0
   end
 
   #--------------------------------------------------------------------------#
@@ -872,22 +975,22 @@ module YGG::MixIns::Player
   def ygg_attack_input1
     act, pact = nil, nil
     obj = nil
-    if Input.trigger?( Input::LETTERS["A"] )
-      return 0 unless ygg_battler.ygg_can_attack?
+    if YGG.player_keys.triggered?(Win32::Keyboard::Keys::A)
+      return 0 unless ygg_battler.ygg_can_attack?()
       obj = ygg_battler.weapons[0]
       act, pact = *get_obj_actions( obj, 1 )
-    elsif Input.trigger?( Input::LETTERS["S"] ) && ygg_battler.two_swords_style
-      return 0 unless ygg_battler.ygg_can_attack?
+    elsif YGG.player_keys.triggered?(Win32::Keyboard::Keys::S) && ygg_battler.two_swords_style
+      return 0 unless ygg_battler.ygg_can_attack?()
       obj = ygg_battler.weapons[1]
       act, pact = *get_obj_actions( obj, 1 )
-    elsif Input.press?( Input::LETTERS["D"] ) && !ygg_battler.two_swords_style
-      return 0 unless ygg_battler.ygg_can_attack?
+    elsif YGG.player_keys.triggered?(Win32::Keyboard::Keys::D) && !ygg_battler.two_swords_style
+      return 0 unless ygg_battler.ygg_can_attack?()
       obj = ygg_battler.armors[0]
       act, pact = *get_obj_actions( obj, 0 )
     end
-    return 0 if act.nil? || pact.nil?
-    return 0 if act.empty? && pact.empty?
-    if pact.empty?
+    return 0 if act.nil?() || pact.nil?()
+    return 0 if act.empty?() && pact.empty?()
+    if pact.empty?()
       @action_handle.setup( act )
     else
       @action_handle.list_stack << act
@@ -901,10 +1004,10 @@ module YGG::MixIns::Player
   #--------------------------------------------------------------------------#
   # * new-method :ygg_attack_input2
   #--------------------------------------------------------------------------#
-  def ygg_attack_input2( acthand_ret )
+  def ygg_attack_input2(acthand_ret)
     for i in 1..5
       act, pact, obj = nil, nil, nil
-      if Input.trigger?( Input::NUMBERS[i] )
+      if YGG.player_keys.triggered?(Win32::Keyboard::Keys::NUMBERS[i])
         slot_id = i-1
         obj = ygg_battler.skill_slot( slot_id )
         next unless ygg_battler.ygg_skill_can_use?( obj )
@@ -937,7 +1040,7 @@ module YGG::MixIns::Player
   def ygg_attack_input3( acthand_ret )
     for i in (6..9).to_a+[0]
       act, pact, obj = nil, nil, nil
-      if Input.trigger?( Input::NUMBERS[i] )
+      if YGG.player_keys.triggered?(Win32::Keyboard::Keys::NUMBERS[i])
         slot_id = i==0 ? 10-6 : i-6
         obj = ygg_battler.item_slot( slot_id )
         next unless ygg_battler.ygg_item_can_use?( obj )
@@ -957,7 +1060,7 @@ module YGG::MixIns::Player
         @action_handle.execute( self, [], { :item_id => obj.id } )
         acthand_ret = 1
       end
-      ygg_battler.get_item_handle( obj.id ).reset_time
+      ygg_battler.get_item_handle( obj.id ).reset_time()
       ygg_battler.cooldown += obj.user_charge_cap
       ygg_battler.ygg_use_item( obj )
     end
@@ -968,8 +1071,8 @@ module YGG::MixIns::Player
   # * new-method :skill_can_use?
   #--------------------------------------------------------------------------#
   def skill_can_use?( obj )
-    return false if obj.nil?
-    return false if ygg_battler.nil?
+    return false if obj.nil?()
+    return false if ygg_battler.nil?()
     return ygg_battler.skill_can_use?( obj )
   end
 
@@ -977,8 +1080,8 @@ module YGG::MixIns::Player
   # * new-method :item_can_use?
   #--------------------------------------------------------------------------#
   def item_can_use?( obj )
-    return false if obj.nil?
-    return false if ygg_battler.nil?
+    return false if obj.nil?()
+    return false if ygg_battler.nil?()
     return $game_party.item_can_use?( obj )
   end
 
@@ -1049,7 +1152,7 @@ class YGG::Handlers::AIEngines::Base
   #--------------------------------------------------------------------------#
   # * new-method :initialize
   #--------------------------------------------------------------------------#
-  def initialize( parent, setup_data={} )
+  def initialize(parent, setup_data = {})
     @parent = parent
     @update_time = 0
   end
@@ -1077,7 +1180,6 @@ class YGG::Handlers::AIEngines::Base
     @update_time = [@update_time - 1, 0].max
     ai_update if @update_time == 0
   end
-
 end
 
 #==============================================================================#
@@ -1096,18 +1198,18 @@ class YGG::Handlers::AIEngines::Default
   #--------------------------------------------------------------------------#
   # * new-method :ai_update
   #--------------------------------------------------------------------------#
-  def ai_update
+  def ai_update()
     #return # // Remove this later
     return if @parent.ygg_battler.cooldown > 0
-    return if @parent.ygg_battler.nil?
-    @parent.ygg_battler.make_action
+    return if @parent.ygg_battler.nil?()
+    @parent.ygg_battler.make_action()
     case @parent.ygg_battler.action.kind
     when 0 # // Basic
       case @parent.ygg_battler.action.basic
       when 0 # // Attack
         @update_time = @update_time_cap / 3
         t = @parent.get_targets_nearby( 1, @parent.ygg_correct_target( "ENEMY" ) )
-        return @update_time = @update_time_cap / 4 if t[0].nil?
+        return @update_time = @update_time_cap / 4 if t[0].nil?()
         @parent.turn_to_coord( t[0].x, t[0].y )
         @parent.action_handle.setup( @parent.ygg_battler.get_action_by_id( 0 ) )
         @parent.action_handle.execute( @parent )
@@ -1123,15 +1225,15 @@ class YGG::Handlers::AIEngines::Default
       end
     when 1 # // Skill
       obj = $data_skills[@parent.ygg_battler.action.skill_id]
-      next unless @parent.ygg_battler.ygg_skill_can_use?( obj )
-      if obj.for_opponent?
+      return unless @parent.ygg_battler.ygg_skill_can_use?( obj )
+      if obj.for_opponent?()
         t = @parent.get_targets_nearby( 1, @parent.ygg_correct_target( "ENEMY" ) )
-      elsif obj.for_friend?
+      elsif obj.for_friend?()
         t = @parent.get_targets_nearby( 1, @parent.ygg_correct_target( "ALLY" ) )
       else
         t = @parent.get_targets_nearby( 1, "ALL" )
       end
-      return @update_time = @update_time_cap / 4 if t[0].nil?
+      return @update_time = @update_time_cap / 4 if t[0].nil?()
       @parent.ygg_battler.ygg_use_skill( obj )
       @parent.turn_to_coord( t[0].x, t[0].y )
       @parent.action_handle.setup( obj.ygg_actions[0] )
@@ -1166,24 +1268,24 @@ class YGG::Handlers::AIEngines::Guard
   def setup_area( setup_data={} )
     # // area_id (id)
     @prox = setup_data["proxy_area"].to_i == 1
-    if !setup_data["area_id"].nil?
+    if !setup_data["area_id"].nil?()
       @guard_area = Rect.new( *$data_areas[setup_data["area_id"].to_i].rect.to_a )
     # // area_x (center), area_y (center), area_range (center, relative side)
-    elsif !setup_data["area_range"].nil?
-      ax  = (!setup_data["area_x"].nil?) ? setup_data["area_x"].to_i : 0
-      ay  = (!setup_data["area_y"].nil?) ? setup_data["area_y"].to_i : 0
-      rng = (!setup_data["area_range"].nil?) ? setup_data["area_range"].to_i : 0
+    elsif !setup_data["area_range"].nil?()
+      ax  = (!setup_data["area_x"].nil?()) ? setup_data["area_x"].to_i : 0
+      ay  = (!setup_data["area_y"].nil?()) ? setup_data["area_y"].to_i : 0
+      rng = (!setup_data["area_range"].nil?()) ? setup_data["area_range"].to_i : 0
       @guard_area = Rect.new( ax-rng, ay-rng, rng*2, rng*2 )
     # // area_x (left), area_y (left), area_width (left), area_height (left)
     else
       @guard_area = Rect.new(
-        (!setup_data["area_x"].nil?) ? setup_data["area_x"].to_i : 0,
-        (!setup_data["area_y"].nil?) ? setup_data["area_y"].to_i : 0,
-        (!setup_data["area_width"].nil?) ? setup_data["area_width"].to_i : 0,
-        (!setup_data["area_height"].nil?) ? setup_data["area_height"].to_i : 0
+        (!setup_data["area_x"].nil?()) ? setup_data["area_x"].to_i : 0,
+        (!setup_data["area_y"].nil?()) ? setup_data["area_y"].to_i : 0,
+        (!setup_data["area_width"].nil?()) ? setup_data["area_width"].to_i : 0,
+        (!setup_data["area_height"].nil?()) ? setup_data["area_height"].to_i : 0
       )
     end
-    @__guardarea_data ||= {} ; @__guardarea_data.clear
+    @__guardarea_data ||= {} ; @__guardarea_data.clear()
     @__guardarea_data["proxy_area"]  = setup_data["proxy_area"]
     @__guardarea_data["area_id"]     = setup_data["area_id"]
     @__guardarea_data["area_range"]  = setup_data["area_range"]
@@ -1196,24 +1298,24 @@ class YGG::Handlers::AIEngines::Guard
   #--------------------------------------------------------------------------#
   # * new-method :reset_area
   #--------------------------------------------------------------------------#
-  def reset_area
+  def reset_area()
     setup_area( @__guardarea_data )
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ai_update
   #--------------------------------------------------------------------------#
-  def ai_update
-    return if @parent.ygg_battler.nil?
-    @__temprect = @guard_area.to_vector4_a
+  def ai_update()
+    return if @parent.ygg_battler.nil?()
+    @__temprect = @guard_area.to_vector4_a()
     @__temprect[0] += @prox ? @parent.x : 0
     @__temprect[1] += @prox ? @parent.y : 0
     @__temprect[2] += @prox ? @parent.x : 0
     @__temprect[3] += @prox ? @parent.y : 0
     bats = $game_yggdrasil.battlers_range( *@__temprect )
-    unless bats.empty?
+    unless bats.empty?()
       bats -= [@parent]
-      unless bats.empty?
+      unless bats.empty?()
         @parent.balloon_id = 1
         pro = Projectiles::Homing.new( @parent,
           ::YGG::PROJETILE_SETUP["ProjectileTest"].merge(
@@ -1245,12 +1347,12 @@ class YGG::Handlers::AIEngines::Wall
   #--------------------------------------------------------------------------#
   # * overwrite-method :ai_update
   #--------------------------------------------------------------------------#
-  def ai_update
-    return if @parent.ygg_battler.nil?
+  def ai_update()
+    return if @parent.ygg_battler.nil?()
     @burn_time = [@burn_time - 1, 0].max
     @parent.ygg_battler.hp -= [Integer(@parent.ygg_battler.maxhp / @burn_cap.to_f), 1].max + [@burn_time, 0].min.abs
     @parent.ygg_engage.engage( 300 )
-    if @parent.ygg_battler.dead?
+    if @parent.ygg_battler.dead?()
       @parent.ygg_anims << @death_anim if @death_anim > 0
       $game_map.remove_event( @parent.id )
     end
@@ -1270,32 +1372,32 @@ class YGG::Handlers::AIEngines::ImmortalVarBoss
     super( parent, setup_data )
     @hp_var    = setup_data["hp_var"].to_i
     @maxhp_var = setup_data["maxhp_var"].to_i
-    @mp_var    = setup_data["mp_var"].nil? ? nil : setup_data["mp_var"].to_i
-    @maxmp_var = setup_data["maxmp_var"].nil? ? nil : setup_data["maxmp_var"].to_i
+    @mp_var    = setup_data["mp_var"].nil?() ? nil : setup_data["mp_var"].to_i
+    @maxmp_var = setup_data["maxmp_var"].nil?() ? nil : setup_data["maxmp_var"].to_i
     @parent.ygg_invincible = true
-    set_variables
+    set_variables()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :set_variables
   #--------------------------------------------------------------------------#
-  def set_variables
-    return if @parent.ygg_battler.nil?
+  def set_variables()
+    return if @parent.ygg_battler.nil?()
     $game_variables[@hp_var] = @parent.ygg_battler.hp
     $game_variables[@maxhp_var] = @parent.ygg_battler.maxhp
-    $game_variables[@mp_var] = @parent.ygg_battler.mp unless @mp_var.nil?
-    $game_variables[@maxmp_var] = @parent.ygg_battler.maxmp unless @maxmp_var.nil?
+    $game_variables[@mp_var] = @parent.ygg_battler.mp unless @mp_var.nil?()
+    $game_variables[@maxmp_var] = @parent.ygg_battler.maxmp unless @maxmp_var.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :ai_update
   #--------------------------------------------------------------------------#
-  def ai_update
-    return if @parent.ygg_battler.nil?
+  def ai_update()
+    return if @parent.ygg_battler.nil?()
     @parent.ygg_battler.hp = $game_variables[@hp_var]
     $game_variables[@maxhp_var] = @parent.ygg_battler.maxhp
-    $game_variables[@mp_var] = @parent.ygg_battler.mp unless @mp_var.nil?
-    $game_variables[@maxmp_var] = @parent.ygg_battler.maxmp unless @maxmp_var.nil?
+    $game_variables[@mp_var] = @parent.ygg_battler.mp unless @mp_var.nil?()
+    $game_variables[@maxmp_var] = @parent.ygg_battler.maxmp unless @maxmp_var.nil?()
   end
 
 end
@@ -1328,11 +1430,11 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   #--------------------------------------------------------------------------#
   def initialize( parent, assignments )
     @parent          = parent
-    super
+    super()
     # // Main Properties
     @character_name  = assignments[:character_name] || ""
     @character_index = (assignments[:character_index] || 0).to_i
-    @through         = assignments[:through].nil? ? true : assignments[:through]
+    @through         = assignments[:through].nil?() ? true : assignments[:through]
     @move_speed      = (assignments[:move_speed] || 5).to_i
 
     # // Projectile Properties
@@ -1347,7 +1449,7 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
     @action_name     = assignments[:action_name] || ""
     @action          = assignments[:action] || ::YGG.get_action_list( @action_name )
 
-    @affect_passage  = assignments[:affect_passage].nil? ? false : assignments[:affect_passage]
+    @affect_passage  = assignments[:affect_passage].nil?() ? false : assignments[:affect_passage]
 
     @registered      = false
 
@@ -1355,47 +1457,61 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   end
 
   #--------------------------------------------------------------------------#
+  # * new-method :trigger
+  #--------------------------------------------------------------------------#
+  def trigger() ; return nil ; end
+
+  #--------------------------------------------------------------------------#
   # * new-method :hp_visible?
   #--------------------------------------------------------------------------#
-  def hp_visible? ; return false ; end
+  def hp_visible?() ; return false ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :mp_visible?
   #--------------------------------------------------------------------------#
-  def mp_visible? ; return false ; end
+  def mp_visible?() ; return false ; end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :__reload
+  #--------------------------------------------------------------------------#
+  def __reload()
+    if registered?()
+      pro_unregister() ; pro_register()
+    end
+  end
 
   #--------------------------------------------------------------------------#
   # * new-method :registered?
   #--------------------------------------------------------------------------#
-  def registered?
+  def registered?()
     return @registered
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :pro_register
   #--------------------------------------------------------------------------#
-  def pro_register
+  def pro_register()
     @registered = true ; $game_yggdrasil.add_passage_obj( self ) if @affect_passage
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :pro_unregister
   #--------------------------------------------------------------------------#
-  def pro_unregister
+  def pro_unregister()
     @registered = false ; $game_yggdrasil.remove_passage_obj( self )
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_register
   #--------------------------------------------------------------------------#
-  def ygg_register
+  def ygg_register()
     @ygg_registered = true
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_unregister
   #--------------------------------------------------------------------------#
-  def ygg_unregister
+  def ygg_unregister()
     $game_yggdrasil.remove_battler( self )
     @ygg_registered = false
   end
@@ -1403,27 +1519,27 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_attacker
   #--------------------------------------------------------------------------#
-  def ygg_attacker
+  def ygg_attacker()
     return @parent.ygg_attacker
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_boss
   #--------------------------------------------------------------------------#
-  def ygg_boss? ; return false ; end
+  def ygg_boss?() ; return false ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_ally?
   #--------------------------------------------------------------------------#
-  def ygg_ally?
-    return @parent.ygg_ally?
+  def ygg_ally?()
+    return @parent.ygg_ally?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_enemy?
   #--------------------------------------------------------------------------#
-  def ygg_enemy?
-    return @parent.ygg_enemy?
+  def ygg_enemy?()
+    return @parent.ygg_enemy?()
   end
 
   #--------------------------------------------------------------------------#
@@ -1446,35 +1562,35 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-  def update
-    update_projectile unless @wait_count > 0
-    super
+  def update()
+    update_projectile() unless @wait_count > 0
+    super()
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :update_states
   #--------------------------------------------------------------------------#
-  def update_states ; end
+  def update_states() ; end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :move_speed
   #--------------------------------------------------------------------------#
-  def move_speed ; return @move_speed ; end
+  def move_speed() ; return @move_speed ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_projectile
   #--------------------------------------------------------------------------#
-  def update_projectile
-    process_move if can_move?
-    process_detonate if can_detonate?
-    process_terminate if can_terminate?
+  def update_projectile()
+    process_move() if can_move?()
+    process_detonate() if can_detonate?()
+    process_terminate() if can_terminate?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :actual_*x/y
   #--------------------------------------------------------------------------#
-  def actual_x ; return @real_x / 256 ; end
-  def actual_y ; return @real_y / 256 ; end
+  def actual_x() ; return @real_x / 256 ; end
+  def actual_y() ; return @real_y / 256 ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :pos?
@@ -1487,23 +1603,23 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   # * new-method :target_xy?
   #--------------------------------------------------------------------------#
   def target_xy?( x, y )
-    return !ygg_get_targets( x, y, ygg_correct_target( @target_type ), true ).empty?
+    return !ygg_get_targets( x, y, ygg_correct_target( @target_type ), true ).empty?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :terminated?
   #--------------------------------------------------------------------------#
-  def terminated?
+  def terminated?()
     return @terminated
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :can_move?
   #--------------------------------------------------------------------------#
-  def can_move?
-    return false if self.terminated?
-    return false if jumping?
-    return false if moving?
+  def can_move?()
+    return false if self.terminated?()
+    return false if jumping?()
+    return false if moving?()
     return false if (@move_cap > 0 && @move_count >= @move_cap)
     return true
   end
@@ -1511,8 +1627,8 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :can_detonate?
   #--------------------------------------------------------------------------#
-  def can_detonate?
-    return false if self.terminated?
+  def can_detonate?()
+    return false if self.terminated?()
     return false if (@detonate_cap > 0 && @detonate_count >= @detonate_cap)
     return target_xy?( self.actual_x, self.actual_y )
   end
@@ -1520,23 +1636,23 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :can_terminate?
   #--------------------------------------------------------------------------#
-  def can_terminate?
-    return false if self.terminated?
+  def can_terminate?()
+    return false if self.terminated?()
     return true if (@detonate_cap > 0 && @detonate_count >= @detonate_cap )
-    return (@move_cap > 0 && @move_count >= @move_cap && !moving?)
+    return (@move_cap > 0 && @move_count >= @move_cap && !moving?())
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :process_move
   #--------------------------------------------------------------------------#
-  def process_move
+  def process_move()
     @move_count += 1
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :process_detonate
   #--------------------------------------------------------------------------#
-  def process_detonate
+  def process_detonate()
     @detonate_count += 1
     @action_handle.setup( @action )
     @action_handle.execute( self )
@@ -1545,14 +1661,14 @@ class YGG::Objects::Projectiles::Base < ::Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :process_terminate
   #--------------------------------------------------------------------------#
-  def process_terminate
-    @terminated = true ; ygg_unregister
+  def process_terminate()
+    @terminated = true ; ygg_unregister()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :force_terminate
   #--------------------------------------------------------------------------#
-  def force_terminate
+  def force_terminate()
     @terminated = true
   end
 
@@ -1573,9 +1689,9 @@ class YGG::Objects::Projectiles::Linear < ::YGG::Objects::Projectiles::Base
   #--------------------------------------------------------------------------#
   # * super-method :process_move
   #--------------------------------------------------------------------------#
-  def process_move
-    move_forward
-    super
+  def process_move()
+    move_forward()
+    super()
   end
 
 end
@@ -1601,9 +1717,9 @@ class YGG::Objects::Projectiles::Hopping < ::YGG::Objects::Projectiles::Base
   #--------------------------------------------------------------------------#
   # * super-method :process_move
   #--------------------------------------------------------------------------#
-  def process_move
+  def process_move()
     jump_forward( @jump_amount, 0 )
-    super
+    super()
   end
 
 end
@@ -1626,7 +1742,7 @@ class YGG::Objects::Projectiles::Homing < ::YGG::Objects::Projectiles::Base
     @homing_range = (assignments[:homing_range] || 5).to_i
     @target = assignments[:target]
     super( parent, assignments )
-    set_target if @target.nil?
+    set_target() if @target.nil?()
   end
 
   #--------------------------------------------------------------------------#
@@ -1639,31 +1755,31 @@ class YGG::Objects::Projectiles::Homing < ::YGG::Objects::Projectiles::Base
   #--------------------------------------------------------------------------#
   # * new-method :set_target
   #--------------------------------------------------------------------------#
-  def set_target
+  def set_target()
     @target = get_targets_nearby( @homing_range, ygg_correct_target( @target_type ) )[0]
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :target_oor? # // target_out_of_range?
   #--------------------------------------------------------------------------#
-  def target_oor?
+  def target_oor?()
     return @homing_range == -1 ? false : (@target.distance_from( self ) > @homing_range)
   end
 
   #--------------------------------------------------------------------------#
   # * super-method :process_move
   #--------------------------------------------------------------------------#
-  def process_move
+  def process_move()
     move_toward_char( @target )
-    super
+    super()
   end
 
   #--------------------------------------------------------------------------#
   # * super-method :can_terminate?
   #--------------------------------------------------------------------------#
-  def can_terminate?
-    return true if target_oor?
-    super
+  def can_terminate?()
+    return true if target_oor?()
+    super()
   end
 
 end
@@ -1696,16 +1812,16 @@ class YGG::Objects::Projectiles::Bomb < ::YGG::Objects::Projectiles::Base
   #--------------------------------------------------------------------------#
   # * super-method :update_projectile
   #--------------------------------------------------------------------------#
-  def update_projectile
+  def update_projectile()
     @time = [@time-1, 0].max
-    super
+    super()
   end
 
   #--------------------------------------------------------------------------#
   # * super-method :can_detonate?
   #--------------------------------------------------------------------------#
-  def can_detonate?
-    return false unless super
+  def can_detonate?()
+    return false unless super()
     return true if @time == 0
     return false
   end
@@ -1748,17 +1864,16 @@ class YGG::Objects::Projectiles::ActionPilot < ::YGG::Objects::Projectiles::Base
   #--------------------------------------------------------------------------#
   # * new-method :update_projectile
   #--------------------------------------------------------------------------#
-  def update_projectile
-    self :p
+  def update_projectile()
     @sleep_count = [@sleep_count - 1, 0].max
     return unless @sleep_count == 0
     while @pilot_index < @pilot_list.size
       act_set     = @pilot_list[@pilot_index]
       @action     = act_set[0]
       @parameters = act_set[1]
-      for i in 0...@parameters.size ; @parameters[i] = @parameters[i].to_s ; end
+      for i in 0...@parameters.size() ; @parameters[i] = @parameters[i].to_s() ; end
       act_result = -1
-      case @action.upcase
+      case @action.upcase()
       when "MOVE"
         act_result = pilot_move( @action, @parameters )
       when "DETONATE"
@@ -1792,34 +1907,34 @@ class YGG::Objects::Projectiles::ActionPilot < ::YGG::Objects::Projectiles::Base
     character = self
     case parameters[0].upcase
     when "FORWARD"
-      character.move_forward
+      character.move_forward()
     when "BACKWARD"
-      character.move_backward
+      character.move_backward()
     when "UP"
-      character.move_up
+      character.move_up()
     when "DOWN"
-      character.move_down
+      character.move_down()
     when "LEFT"
-      character.move_left
+      character.move_left()
     when "RIGHT"
-      character.move_right
+      character.move_right()
     when "TURNUP", "TURN_UP", "TURN UP"
-      character.turn_up
+      character.turn_up()
     when "TURNDOWN", "TURN_DOWN", "TURN DOWN"
-      character.turn_down
+      character.turn_down()
     when "TURNLEFT", "TURN_LEFT", "TURN LEFT"
-      character.turn_left
+      character.turn_left()
     when "TURNRIGHT", "TURN_RIGHT", "TURN RIGHT"
-      character.turn_right
+      character.turn_right()
     when "TURNRIGHT90", "TURN_RIGHT_90", "TURN RIGHT 90"
-      character.turn_right_90
+      character.turn_right_90()
     when "TURNLEFT90", "TURN_LEFT_90", "TURN LEFT 90"
-      character.turn_left_90
+      character.turn_left_90()
     when "TURN180", "TURN_180", "TURN 180"
-      character.turn_180
+      character.turn_180()
     when "TURNTO", "TURN_TO", "TURN TO"
       target = nil
-      character.turn_to_coord( target.x, target.y ) unless target.nil?
+      character.turn_to_coord( target.x, target.y ) unless target.nil?()
     end
     return 0
   end
@@ -1841,7 +1956,7 @@ class YGG::Objects::Projectiles::ActionPilot < ::YGG::Objects::Projectiles::Base
   # * new-method :pilot_detonate
   #--------------------------------------------------------------------------#
   def pilot_detonate( action, parameters )
-    process_detonate
+    process_detonate()
     return 0
   end
 
@@ -1849,7 +1964,7 @@ class YGG::Objects::Projectiles::ActionPilot < ::YGG::Objects::Projectiles::Base
   # * new-method :pilot_terminate
   #--------------------------------------------------------------------------#
   def pilot_terminate( action, parameters )
-    process_terminate
+    process_terminate()
     return 0
   end
 
@@ -1957,7 +2072,7 @@ class YGG::Handlers::Equip < YGG::Pos
   #--------------------------------------------------------------------------#
   def self.alternate_mix( *args )
     aresult = [] ; sizes = args.inject([]) { |result, array| result << array.size }
-    sizes.max.times { |i| args.each { |array| aresult << array[i] unless array[i].nil? } }
+    sizes.max.times { |i| args.each { |array| aresult << array[i] unless array[i].nil?() } }
     return aresult
   end
 
@@ -1999,26 +2114,24 @@ class YGG::Handlers::Equip < YGG::Pos
 end
 
 #==============================================================================#
-($imported ||= {})["Yggdrasil_1x6_ABS"] = true
-#==============================================================================#
 # ** YGG
 #==============================================================================#
 module YGG
 
-  module_function
+  module_function()
 
   #--------------------------------------------------------------------------#
   # * new-method :silent_error?
   #--------------------------------------------------------------------------#
-  def silent_error? ; return false ; end
-  def debug_mode?   ; return false ; end
+  def silent_error?() ; return false ; end
+  def debug_mode?()   ; return false ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :get_action_list
   #--------------------------------------------------------------------------#
   def get_action_list( action_name )
     unless YGG::ACTION_LIST.has_key?( action_name )
-      return [] if silent_error? # // Silent Error
+      return [] if silent_error?() # // Silent Error
       raise "Action List #{action_name} does not exist"
       exit
     end
@@ -2159,21 +2272,21 @@ module YGG
     #--------------------------------------------------------------------------#
     # * new-method :screen_x
     #--------------------------------------------------------------------------#
-    def screen_x
+    def screen_x()
       return ($game_map.adjust_x(@real_x) + 8007) / 8 - 1000 + 16
     end
 
     #--------------------------------------------------------------------------#
     # * new-method :screen_y
     #--------------------------------------------------------------------------#
-    def screen_y
+    def screen_y()
       return ($game_map.adjust_y(@real_y) + 8007) / 8 - 1000 + 32
     end
 
     #--------------------------------------------------------------------------#
     # * new-method :screen_z
     #--------------------------------------------------------------------------#
-    def screen_z ; return @z ; end
+    def screen_z() ; return @z ; end
 
   end
 
@@ -2200,7 +2313,7 @@ module YGG
     #--------------------------------------------------------------------------#
     # * new-method :fader_type
     #--------------------------------------------------------------------------#
-    def fader_type ; return @fade_out ; end
+    def fader_type() ; return @fade_out ; end
 
     #--------------------------------------------------------------------------#
     # * new-method :setup_pos
@@ -2394,194 +2507,12 @@ module YGG
       DROP_ITEM2       = /<\/(?:DROP_ITEM|DROP ITEM|DROPITEM)>/i
       DROP_CLEAR       = /<(?:DROPS_CLEAR|DROPS CLEAR|DROPSCLEAR)>/i
       GOLD_VARI        = /<(?:GOLD_VARIATION|GOLD VARIATION):[ ](\d+)>/i
+      EQUIP_ICONS      = /<(?:EQUIP_ICON|EQUIP ICON|EQUIPICON)s?[ ](\d+):[ ](.*)>/i
+      USE_EQUIPMENT    = /<(?:USE_EQUIPMENT|USE EQUIPMENT|USEEQUIPMENT)>/i
+      NO_EQUIPMENT     = /<(?:NO_EQUIPMENT|NO EQUIPMENT|NOEQUIPMENT)>/i
     end
   end # // REGEXP
 end # // YGG
-
-#==============================================================================#
-#
-# OriginalWij and Yanfly Collaboration - Keyboard Input
-# Last Date Updated: 2010.06.12
-#
-#==============================================================================#
-# Updates
-# -----------------------------------------------------------------------------#
-# o 2010.06.12 - Started and Finished Script.
-#==============================================================================#
-unless $imported["KeyboardInput"]
-($imported ||= {})["KeyboardInput"] = true
-#==============================================================================#
-# ** Input
-#==============================================================================#
-class << Input
-  #--------------------------------------------------------------------------#
-  # Aliases (Mods - Linked to Module) - Created by OriginalWij
-  #--------------------------------------------------------------------------#
-  alias ow_dt_i_press press? unless $@
-  alias ow_dt_i_trigger trigger? unless $@
-  alias ow_dt_i_repeat repeat? unless $@
-  alias ow_dt_i_update update unless $@
-end
-
-module Input
-
-  #--------------------------------------------------------------------------
-  # * initial module settings - Created by OriginalWij and Yanfly
-  #--------------------------------------------------------------------------
-  GetKeyState = Win32API.new( "user32", "GetAsyncKeyState", "i", "i" )
-  GetCapState = Win32API.new( "user32", "GetKeyState", "i", "i" )
-  KeyRepeatCounter = {}
-
-  module_function
-  #--------------------------------------------------------------------------
-  # * alias-method :update - Created by OriginalWij
-  #--------------------------------------------------------------------------
-  def update
-    ow_dt_i_update
-    for key in KeyRepeatCounter.keys
-      if (GetKeyState.call(key).abs & 0x8000 == 0x8000)
-        KeyRepeatCounter[key] += 1
-      else
-        KeyRepeatCounter.delete(key)
-      end
-    end
-  end
-
-  #--------------------------------------------------------------------------
-  # * alias-method :press? - Created by OriginalWij
-  #--------------------------------------------------------------------------
-  def press?( key )
-    return ow_dt_i_press(key) if key < 30
-    adjusted_key = adjust_key(key)
-    return true unless KeyRepeatCounter[adjusted_key].nil?
-    return key_pressed?(adjusted_key)
-  end
-
-  #--------------------------------------------------------------------------
-  # * alias-method :trigger? - Created by OriginalWij
-  #--------------------------------------------------------------------------
-  def trigger?(key)
-    return ow_dt_i_trigger(key) if key < 30
-    adjusted_key = adjust_key(key)
-    count = KeyRepeatCounter[adjusted_key]
-    return ((count == 0) or (count.nil? ? key_pressed?(adjusted_key) : false))
-  end
-
-  #--------------------------------------------------------------------------
-  # * alias-method :repeat? - Created by OriginalWij
-  #--------------------------------------------------------------------------
-  def repeat?(key)
-    return ow_dt_i_repeat(key) if key < 30
-    adjusted_key = adjust_key(key)
-    count = KeyRepeatCounter[adjusted_key]
-    return true if count == 0
-    if count.nil?
-      return key_pressed?(adjusted_key)
-    else
-      return (count >= 23 and (count - 23) % 6 == 0)
-    end
-  end
-
-  #--------------------------------------------------------------------------
-  # * new-method :adjust_key - Created by OriginalWij
-  #--------------------------------------------------------------------------
-  def adjust_key(key)
-    key -= 130 if key.between?(130, 158)
-    return key
-  end
-
-  #--------------------------------------------------------------------------
-  # * new-method :key_pressed? - Created by OriginalWij
-  #--------------------------------------------------------------------------
-  def key_pressed?(key)
-    if (GetKeyState.call(key).abs & 0x8000 == 0x8000)
-      KeyRepeatCounter[key] = 0
-      return true
-    end
-    return false
-  end
-
-  #--------------------------------------------------------------------------
-  # * new-method :typing? - Created by Yanfly
-  #--------------------------------------------------------------------------
-  def typing?
-    return true if repeat?(SPACE)
-    for i in 'A'..'Z'
-      return true if repeat?(LETTERS[i])
-    end
-    for i in 0...NUMBERS.size
-      return true if repeat?(NUMBERS[i])
-      return true if repeat?(NUMPAD[i])
-    end
-    for key in Extras
-      return true if repeat?(key)
-    end
-    return false
-  end
-
-  #--------------------------------------------------------------------------
-  # * new-method :key_type - Created by Yanfly
-  #--------------------------------------------------------------------------
-  def key_type
-    return " " if repeat?(SPACE)
-    for i in 'A'..'Z'
-      next unless repeat?(LETTERS[i])
-      return upcase? ? i.upcase : i.downcase
-    end
-    for i in 0...NUMBERS.size
-      return i.to_s if repeat?(NUMPAD[i])
-      if !press?(SHIFT)
-        return i.to_s if repeat?(NUMBERS[i])
-      elsif repeat?(NUMBERS[i])
-        case i
-        when 1; return "!"
-        when 2; return "@"
-        when 3; return "#"
-        when 4; return "$"
-        when 5; return "%"
-        when 6; return "^"
-        when 7; return "&"
-        when 8; return "*"
-        when 9; return "("
-        when 0; return ")"
-        end
-      end
-    end
-    for key in Extras
-      next unless repeat?(key)
-      case key
-      when USCORE; return press?(SHIFT) ? "_" : "-"
-      when EQUALS; return press?(SHIFT) ? "+" : "="
-      when LBRACE; return press?(SHIFT) ? "{" : "["
-      when RBRACE; return press?(SHIFT) ? "}" : "]"
-      when BSLASH; return press?(SHIFT) ? "|" : "\\"
-      when SCOLON; return press?(SHIFT) ? ":" : ";"
-      when QUOTE;  return press?(SHIFT) ? '"' : "'"
-      when COMMA;  return press?(SHIFT) ? "<" : ","
-      when PERIOD; return press?(SHIFT) ? ">" : "."
-      when SLASH;  return press?(SHIFT) ? "?" : "/"
-      when NMUL;   return "*"
-      when NPLUS;  return "+"
-      when NSEP;   return ","
-      when NMINUS; return "-"
-      when NDECI;  return "."
-      when NDIV;   return "/"
-      end
-    end
-    return ""
-  end
-
-  #--------------------------------------------------------------------------
-  # * new-method :upcase? - Created by Yanfly
-  #--------------------------------------------------------------------------
-  def upcase?
-    return !press?(SHIFT) if GetCapState.call(CAPS) == 1
-    return true if press?(SHIFT)
-    return false
-  end
-
-end # Input
-end
 
 #==============================================================================#
 # ** Vocab
@@ -2629,12 +2560,12 @@ class Rect
   #--------------------------------------------------------------------------#
   # * new-method :to_a
   #--------------------------------------------------------------------------#
-  def to_a ; return self.x, self.y, self.width, self.height ; end
+  def to_a() ; return self.x, self.y, self.width, self.height ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :to_vector4_a
   #--------------------------------------------------------------------------#
-  def to_vector4_a
+  def to_vector4_a()
     return self.x, self.y, self.x + self.width, self.y + self.height
   end
 
@@ -2704,16 +2635,16 @@ module YGG::Caches1x6
   #--------------------------------------------------------------------------#
   # * new-method :yggdrasil_1x6_cache
   #--------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache
-    yggdrasil_1x6_cache_start
+  def yggdrasil_1x6_cache()
+    yggdrasil_1x6_cache_start()
     self.note.split(/[\r\n]+/).each { |line| yggdrasil_1x6_cache_check( line ) }
-    yggdrasil_1x6_cache_end
+    yggdrasil_1x6_cache_end()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :yggdrasil_1x6_cache_start
   #--------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_start
+  def yggdrasil_1x6_cache_start()
     @charge_cap      = 0
     @user_charge_cap = 0
     @atk_act_name    = ""
@@ -2780,7 +2711,7 @@ module YGG::Caches1x6
   #--------------------------------------------------------------------------#
   # * new-method :yggdrasil_1x6_cache_end
   #--------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_end
+  def yggdrasil_1x6_cache_end()
     @__current_action = nil ; @__pre_action = nil
   end
 
@@ -2847,23 +2778,23 @@ class YGG::Handlers::Engage
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
-    update_cool_down
-    update_bar_opacity
+  def update()
+    update_cool_down()
+    update_bar_opacity()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_cool_down
   #--------------------------------------------------------------------------#
-  def update_cool_down
+  def update_cool_down()
     @cool_down = [@cool_down-1, 0].max
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_bar_opacity
   #--------------------------------------------------------------------------#
-  def update_bar_opacity
-    if engaged?
+  def update_bar_opacity()
+    if engaged?()
       @bar_opacity = [@bar_opacity+(255/60.0), 255].min
     else
       @bar_opacity = [@bar_opacity-(255/60.0), 0].max
@@ -2880,18 +2811,22 @@ class YGG::Handlers::Equip < YGG::Pos
   #--------------------------------------------------------------------------#
   # * Public Instance Variable(s)
   #--------------------------------------------------------------------------#
-  attr_accessor :parent
+  #attr_accessor :parent
   attr_accessor :icon_index
   attr_accessor :eq_id
   attr_accessor :mirror
   attr_accessor :opacity, :visible
   attr_accessor :sox, :soy # // Sprite Offset
+  attr_accessor :attack_action, :guard_action
+  attr_accessor :direction
+  attr_accessor :guard_time
+
   attr_writer   :angle
 
   #--------------------------------------------------------------------------#
   # * new-method :angle_debug # // DEBUG
   #--------------------------------------------------------------------------#
-  def angle_debug
+  def angle_debug()
     #@angle = (@angle + 1) % 360 if @eq_id == 0
     if Input.trigger?(Input::NUMBERS[1])
       @sox += 1
@@ -2917,11 +2852,11 @@ class YGG::Handlers::Equip < YGG::Pos
   #--------------------------------------------------------------------------#
   # * new-method :initialize
   #--------------------------------------------------------------------------#
-  def initialize( parent, eq_id )
+  def initialize( eq_id )
     super( 0, 0, 0 )
-    @parent       = parent
+    #@parent       = parent
     @eq_id        = eq_id
-    @icon_index   = @parent.equip_icon( @eq_id )
+    @icon_index   = 0 #@parent.equip_icon( @eq_id )
     @list         = []
     @list_index   = 0
     @sox, @soy    = 20, 20
@@ -2931,18 +2866,26 @@ class YGG::Handlers::Equip < YGG::Pos
     @angle_mult   = 1
     @attack_action= ""
     @guard_action = ""
-    reset
+    @guard_time   = 0
+    reset()
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :refresh
+  #--------------------------------------------------------------------------#
+  def refresh()
+    #@icon_index   = @parent.equip_icon( @eq_id )
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :angle
   #--------------------------------------------------------------------------#
-  def angle ; return (@angle*@angle_mult)+@angle_offset ; end
+  def angle ; return (@angle * @angle_mult) + @angle_offset ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :reset
   #--------------------------------------------------------------------------#
-  def reset
+  def reset()
     @wait_count   = 0
     @opacity      = 255
     @ox, @oy, @oz = 0, 0, 0
@@ -2965,44 +2908,44 @@ class YGG::Handlers::Equip < YGG::Pos
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
-    update_list
-    update_position
+  def update()
+    update_list()
+    update_position()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :do_action
   #--------------------------------------------------------------------------#
   def do_action( name )
-    @icon_index    = @parent.equip_icon( @eq_id )
+    #@icon_index    = @parent.equip_icon( @eq_id )
     @list = ACTIONS[name].clone ; @list_index = 0
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :do_attack
   #--------------------------------------------------------------------------#
-  def do_attack
-    @attack_action = @parent.equip_atk_act_name( @eq_id )
+  def do_attack()
+    #@attack_action = @parent.equip_atk_act_name( @eq_id )
     do_action( @attack_action ) unless @attack_action == ""
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :do_guard
   #--------------------------------------------------------------------------#
-  def do_guard
-    @guard_action  = @parent.equip_grd_act_name( @eq_id )
+  def do_guard()
+    #@guard_action  = @parent.equip_grd_act_name( @eq_id )
     do_action( @guard_action ) unless @guard_action == ""
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_position
   #--------------------------------------------------------------------------#
-  def update_position
-    #self.angle_debug
+  def update_position()
+    #self.angle_debug()
     case @eq_id
     when 0 # // Weapon
       oox, ooy = @ox, @oy
-      case @parent.direction
+      case @direction #@parent.direction
       when 1 # // Down-Left
       when 2 # // Down
         @x, @y, @z = -28, -28, 20
@@ -3037,7 +2980,7 @@ class YGG::Handlers::Equip < YGG::Pos
       when 9 # // Up-Right
       end
     when 1 # // Shield
-      case @parent.direction
+      case @direction #@parent.direction
       when 1 # // Down-Left
       when 2 # // Down
         @x, @y, @z = 0, -24, 20
@@ -3061,7 +3004,7 @@ class YGG::Handlers::Equip < YGG::Pos
   #--------------------------------------------------------------------------#
   # * new-method :update_list
   #--------------------------------------------------------------------------#
-  def update_list
+  def update_list()
     @wait_count = [@wait_count - 1, 0].max
     return unless @wait_count == 0
     while @list_index < @list.size
@@ -3079,7 +3022,7 @@ class YGG::Handlers::Equip < YGG::Pos
         @angle = act[1]
         ret_value = 0
       when "RESET"
-        reset
+        reset()
         ret_value = 0
       when "CHANGEOPACITY", "CHANGE_OPACITY", "CHANGE OPACITY"
         @opacity = act[1]
@@ -3091,7 +3034,7 @@ class YGG::Handlers::Equip < YGG::Pos
         @visible = false
         ret_value = 0
       when "WAIT FOR GUARD"
-        return if @parent.guard_time > 0
+        return if @guard_time > 0
         ret_value = 0
       when "WAIT"
         @wait_count = act[1]
@@ -3120,60 +3063,60 @@ class YGG::Handlers::BattleObj
   #--------------------------------------------------------------------------#
   def initialize( id, type )
     @obj_id, @type = id, type ; @charge_time = 0 ;
-    @dummy_obj = RPG::BaseItem.new ; @dummy_obj.yggdrasil_1x6_cache
+    @dummy_obj = RPG::BaseItem.new() ; @dummy_obj.yggdrasil_1x6_cache()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :skill
   #--------------------------------------------------------------------------#
-  def skill
+  def skill()
     return @type == :skill ? $data_skills[@obj_id] : nil
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :item
   #--------------------------------------------------------------------------#
-  def item
+  def item()
     return @type == :item ? $data_items[@obj_id] : nil
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :obj
   #--------------------------------------------------------------------------#
-  def obj
-    return item || skill || @dummy_obj
+  def obj()
+    return item() || skill() || @dummy_obj
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :reset_time
   #--------------------------------------------------------------------------#
-  def reset_time
+  def reset_time()
     @charge_time = cap
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :time
   #--------------------------------------------------------------------------#
-  def time
+  def time()
     return @charge_time
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :cap
   #--------------------------------------------------------------------------#
-  def cap
+  def cap()
     return obj.charge_cap
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :can_use?
   #--------------------------------------------------------------------------#
-  def can_use? ; return @charge_time == 0 ; end
+  def can_use?() ; return @charge_time == 0 ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
+  def update()
     @charge_time = [@charge_time - 1, 0].max
   end
 
@@ -3187,17 +3130,18 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :action_attack
   #--------------------------------------------------------------------------#
-  def action_attack( user_ev, targets_ev )
+  def action_attack( settings={} )
+    user_ev, targets_ev = settings[:user], settings[:targets]
     user = user_ev.ygg_battler
     targets_ev.each { |target|
       next if target.ygg_invincible
       bat = target.ygg_battler
-      next if bat.nil?
+      next if bat.nil?()
       bat.ygg_guard = target.guard_time > 0
       bat.attack_effect( user )
       target.ygg_engage.engage( 180 )
-      YGG::PopText.create_pop( { :character => target, :type => :attack_damage } ) if target.pop_enabled? if YGG::USE_TEXT_POP
-      action_gain_exp( user, bat, user_ev, YGG::POP_EXP ) unless bat.actor? if user.actor?
+      YGG::PopText.create_pop( { :character => target, :type => :attack_damage } ) if target.pop_enabled?() if YGG::USE_TEXT_POP
+      action_gain_exp( user, bat, user_ev, YGG::POP_EXP ) unless bat.actor?() if user.actor?()
       bat.ygg_guard = false
     }
   end
@@ -3205,18 +3149,19 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :action_skill
   #--------------------------------------------------------------------------#
-  def action_skill( user_ev, targets_ev, obj )
+  def action_skill( settings={} )
+    user_ev, targets_ev, obj = settings[:user], settings[:targets], settings[:obj]
     targets = targets_ev.inject([]) { |r, e| r << e.ygg_battler }
-    targets.compact! ; user = user_ev.ygg_battler
+    targets.compact!() ; user = user_ev.ygg_battler
     targets_ev.each { |target|
       next if target.ygg_invincible
       bat = target.ygg_battler
-      next if bat.nil?
+      next if bat.nil?()
       bat.ygg_guard = target.guard_time > 0 && obj.guardable
       bat.skill_effect( user, obj )
       target.ygg_engage.engage( 180 )
-      YGG::PopText.create_pop( { :character => target, :type => :skill_damage } ) if target.pop_enabled? if YGG::USE_TEXT_POP
-      action_gain_exp( user, bat, user_ev, YGG::POP_EXP ) unless bat.actor? if user.actor?
+      YGG::PopText.create_pop( { :character => target, :type => :skill_damage } ) if target.pop_enabled?() if YGG::USE_TEXT_POP
+      action_gain_exp( user, bat, user_ev, YGG::POP_EXP ) unless bat.actor?() if user.actor?()
       bat.ygg_guard = false
     }
   end
@@ -3224,18 +3169,19 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :action_item
   #--------------------------------------------------------------------------#
-  def action_item( user_ev, targets_ev, obj )
+  def action_item( settings={} )
+    user_ev, targets_ev, obj = settings[:user], settings[:targets], settings[:obj]
     targets = targets_ev.inject([]) { |r, e| r << e.ygg_battler }
-    targets.compact! ; user = user_ev.ygg_battler
+    targets.compact!() ; user = user_ev.ygg_battler
     targets_ev.each { |target|
       next if target.ygg_invincible
       bat = target.ygg_battler
-      next if bat.nil?
+      next if bat.nil?()
       bat.ygg_guard = target.guard_time > 0 && obj.guardable
       bat.item_effect( user, obj )
       target.ygg_engage.engage( 180 )
-      YGG::PopText.create_pop( { :character => target, :type => :item_damage } ) if target.pop_enabled? if YGG::USE_TEXT_POP
-      action_gain_exp( user, bat, user_ev, YGG::POP_EXP ) unless bat.actor? if user.actor?
+      YGG::PopText.create_pop( { :character => target, :type => :item_damage } ) if target.pop_enabled?() if YGG::USE_TEXT_POP
+      action_gain_exp( user, bat, user_ev, YGG::POP_EXP ) unless bat.actor?() if user.actor?()
       bat.ygg_guard = false
     }
   end
@@ -3246,12 +3192,13 @@ class YGG::System
   def action_gain_exp( receivee, bat, event=nil, show=true )
     case YGG::EXP_GAINING_METHOD
     when 0 # // Dead
-      return unless bat.dead?
+      return unless bat.dead?()
       exp = bat.exp
     when 1 # // Per Hit
       exp = YGG::EXP_PER_HIT_FORMULA.call(
         bat.hp_damage+receivee.mp_damage, receivee, bat )
     end
+    return if exp == 0
     old_level = receivee.level
     case YGG::EXP_SAHRE_METHOD
     when 0 # Active Member Only
@@ -3266,7 +3213,7 @@ class YGG::System
       receivee.gain_exp( exp, false )
     end
     action_level_up( receivee, old_level, event, YGG::POP_LEVEL_UP ) if old_level != receivee.level
-    unless event.nil?
+    unless event.nil?()
       ::YGG::PopText.create_pop(
         { :character => event, :type => :gain_exp, :parameters => [exp] }
       ) if YGG::USE_TEXT_POP
@@ -3278,7 +3225,7 @@ class YGG::System
   #--------------------------------------------------------------------------#
   def action_level_up( receivee, old_level, event=nil, show=true )
     $scene.level_up_window.show_level_up( receivee, old_level ) if YGG::USE_LEVEL_UP_WINDOW > 0
-    unless event.nil?
+    unless event.nil?()
       if ::YGG::LEVEL_UP_ALERT
         event.ygg_anims << ::YGG::ANIM_ON_LEVEL unless ::YGG::ANIM_ON_LEVEL == 0
       end
@@ -3310,7 +3257,7 @@ class YGG::Handlers::Action
   #--------------------------------------------------------------------------#
   def initialize( parent, list=[] )
     @parent_event = parent
-    @interpreter  = ::Game_Interpreter.new
+    @interpreter  = ::Game_Interpreter.new()
     @list_stack   = [] ; setup( list ) ; execute( nil, [], { :skip_first_update=>true } )
   end
 
@@ -3325,8 +3272,8 @@ class YGG::Handlers::Action
   #--------------------------------------------------------------------------#
   # * new-method :busy?
   #--------------------------------------------------------------------------#
-  def busy?
-    return @list_index < @active_list.size || @interpreter.running?
+  def busy?()
+    return @list_index < @active_list.size || @interpreter.running?()
   end
 
   #--------------------------------------------------------------------------#
@@ -3342,25 +3289,28 @@ class YGG::Handlers::Action
     @user_event     = user_event
     @wait_for_comev = false
     @list_index     = 0
-    update unless start_values[:skip_first_update]
+
+    @affected_targets = []
+
+    update() unless start_values[:skip_first_update]
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
-    @interpreter.update
-    return if @interpreter.running? && @wait_for_comev
+  def update()
+    @interpreter.update()
+    return if @interpreter.running?() && @wait_for_comev
     @wait_count = [@wait_count-1, 0].max
-    update_action if @wait_count == 0
+    update_action() if @wait_count == 0
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_action
   #--------------------------------------------------------------------------#
-  def update_action
-    unless @list_stack.empty?
-      setup( @list_stack.shift )
+  def update_action()
+    unless @list_stack.empty?()
+      setup( @list_stack.shift() )
       execute( @user_event, @target_events,
        {
         :skill_id => @skill_id,
@@ -3370,13 +3320,13 @@ class YGG::Handlers::Action
       )
     end if @list_index >= @active_list.size
     while @list_index < @active_list.size
-      #break if act_set.nil?
+      #break if act_set.nil?()
       @action, @parameters = *@active_list[@list_index]
-      #for i in 0...@parameters.size ; @parameters[i] = @parameters[i].to_s ; end
+      #for i in 0...@parameters.size() ; @parameters[i] = @parameters[i].to_s() ; end
       act_result = -1
       #puts sprintf("ACTION: %s", @action)
       #puts sprintf("PARAMETERS: %s", @parameters)
-      case @action.upcase
+      case @action.upcase()
       # // action: action_name
       when "ACTION", "ACTIONLIST", "ACTION LIST", "ACTION_LIST"
         act_result = action_actionlist( @action, @parameters )
@@ -3392,7 +3342,7 @@ class YGG::Handlers::Action
         act_result = action_effect( @action, @parameters )
       when "OBJEFFECT", "OBJ_EFFECT", "OBJ EFFECT"
         eff = @skill_id > 0 ? "SKILL_EFFECT" : nil
-        eff = @item_id > 0 ? "ITEM_EFFECT" : "" if eff.nil?
+        eff = @item_id > 0 ? "ITEM_EFFECT" : "" if eff.nil?()
         act_result = action_effect( eff, @parameters+["PRESET"] )
       when "GUARD"
         act_result = action_guard( @action, @parameters )
@@ -3427,6 +3377,10 @@ class YGG::Handlers::Action
         act_result = action_parent_wait( @action, @parameters )
       when "WAIT", "WAIT_FOR_EVENT", "WAIT FOR ANIMATION"
         act_result = action_wait( @action, @parameters )
+      when "SE"
+        act_result = action_se( @action, @parameters )
+      when "ME"
+        act_result = action_me( @action, @parameters )
       else
         act_result = extended_actions( @action, @parameters )
       end
@@ -3466,9 +3420,10 @@ class YGG::Handlers::Action
   # * new-method :action_actionlist
   #--------------------------------------------------------------------------#
   def action_actionlist( action, parameters )
-    @active_list = @active_list.slice(0, @list_index) +
+    @active_list = @active_list.slice(0, @list_index+1) +
       ::YGG.get_action_list( parameters[0] ) +
-      @active_list.slice( @list_index, @active_list.size )
+      @active_list.slice( @list_index+1, @active_list.size )
+    @list_index += 1
     return 0
   end
 
@@ -3476,18 +3431,18 @@ class YGG::Handlers::Action
   # * new-method :action_animation
   #--------------------------------------------------------------------------#
   def action_animation( action, parameters )
-    p0 = parameters[0].to_s.upcase
-    p1 = parameters[1].upcase
-    p2 = parameters[2].upcase
+    p0 = parameters[0].to_s.upcase()
+    p1 = parameters[1].upcase()
+    p2 = parameters[2].upcase()
 
     id = 0
     case p0
     when "OBJ"
       id = $data_skills[@skill_id].animation_id if @skill_id > 0
       id = $data_items[@item_id].animation_id    if @item_id > 0
-      id = @user_event.ygg_battler.atk_animation_id if id == -1
+      id = @user_event.ygg_battler.atk_animation_id() if id == -1
     when "ATK", "ATTACK"
-      id = @user_event.ygg_battler.atk_animation_id
+      id = @user_event.ygg_battler.atk_animation_id()
     else
       id = p0.to_i
     end
@@ -3497,7 +3452,7 @@ class YGG::Handlers::Action
       event = @user_event
       x, y = *YGG.offset_xy(
        event.x, event.y,
-       [parameters[3].to_i, parameters[4].to_i],
+       [parameters[3].to_i(), parameters[4].to_i()],
        event.direction )
       targets = action_target( "TARGET", ["MAP_XY", x, y], true )
       case p2
@@ -3522,7 +3477,8 @@ class YGG::Handlers::Action
   #--------------------------------------------------------------------------#
   def action_origin( action, parameters )
     action_target( "TARGET", parameters, true ).each { |character|
-      character.set_orgin }
+      character.set_orgin() }
+    return 0
   end
 
   #--------------------------------------------------------------------------#
@@ -3533,17 +3489,17 @@ class YGG::Handlers::Action
     targets.each { |character|
       case parameters[1].upcase
       when "FORWARD"
-        character.move_forward
+        character.move_forward()
       when "BACKWARD"
-        character.move_backward
+        character.move_backward()
       when "UP"
-        character.move_up
+        character.move_up()
       when "DOWN"
-        character.move_down
+        character.move_down()
       when "LEFT"
-        character.move_left
+        character.move_left()
       when "RIGHT"
-        character.move_right
+        character.move_right()
       when "TO"
         case parameters[2]
         when "ORIGIN"
@@ -3570,19 +3526,19 @@ class YGG::Handlers::Action
       when "TOMAPXY", "TO_MAP_XY", "TO MAP XY"
         character.moveto( parameters[2].to_i, parameters[3].to_i )
       when "TURNUP", "TURN_UP", "TURN UP"
-        character.turn_up
+        character.turn_up()
       when "TURNDOWN", "TURN_DOWN", "TURN DOWN"
-        character.turn_down
+        character.turn_down()
       when "TURNLEFT", "TURN_LEFT", "TURN LEFT"
-        character.turn_left
+        character.turn_left()
       when "TURNRIGHT", "TURN_RIGHT", "TURN RIGHT"
-        character.turn_right
+        character.turn_right()
       when "TURNRIGHT90", "TURN_RIGHT_90", "TURN RIGHT 90"
-        character.turn_right_90
+        character.turn_right_90()
       when "TURNLEFT90", "TURN_LEFT_90", "TURN LEFT 90"
-        character.turn_left_90
+        character.turn_left_90()
       when "TURN180", "TURN_180", "TURN 180"
-        character.turn_180
+        character.turn_180()
       when "TURNTO", "TURN_TO", "TURN TO"
         prms = parameters.slice( 2, parameters.size )
         action_targets( "TARGET", prms, true ).each { |target|
@@ -3661,11 +3617,11 @@ class YGG::Handlers::Action
     when "SUB"
       @range -= [[ parameters[1].to_i, parameters[2].to_i ]]
     when "CLEAR"
-      @range.clear
+      @range.clear()
     when "CREATE"
       rng, minrng, type = parameters[1].to_i, parameters[2].to_i, parameters[3].to_i
       target = action_target( "TARGET", [parameters[4].to_s], true )[0]
-      direction = target.nil? ? parameters[4].to_i : target.direction
+      direction = target.nil?() ? parameters[4].to_i : target.direction
       @range = YGG.create_range_data( rng, minrng, type, direction )
     end
     return 0
@@ -3677,7 +3633,9 @@ class YGG::Handlers::Action
   def action_target( action, parameters, return_only=false )
     raise "Parameter is not an array" unless parameters.is_a?( Array )
     targets = []
-    case parameters[0].upcase
+    case parameters[0].upcase()
+    when "AFFECTED"
+      targets = @affected_targets
     when "PARENT"
       targets = [ @parent_event ]
     when "USER"
@@ -3701,11 +3659,11 @@ class YGG::Handlers::Action
       targets = [targets[rand(targets.size)]]
     when "SCREEN", "ONSCREEN", "ON_SCREEN"
       $game_yggdrasil.battlers.each { |ev|
-        targets.push( ev ) if ev.limitedOnScreen?
+        targets.push( ev ) if ev.limitedOnScreen?()
       }
     when "OFFSCREEN", "OFF_SCREEN"
       $game_yggdrasil.battlers.each { |ev|
-        targets.push( ev ) if !ev.limitedOnScreen?
+        targets.push( ev ) if !ev.limitedOnScreen?()
       }
     when "MAP_XY"
       xy_list = [ [parameters[1].to_i, parameters[2].to_i] ]
@@ -3736,7 +3694,7 @@ class YGG::Handlers::Action
   # * new-method :action_target_select
   #--------------------------------------------------------------------------#
   def action_target_select( action, parameters )
-    if @parent_event.ai_operated?
+    if @parent_event.ai_operated?()
       targs = action_target( "TARGET", parameters.slice( 1, parameters.size ) ).sort_by { rand }
       result = [] ; for i in 0...parameters[0].to_i ; result.push( targs[i] ) ; end
       @target_events = result.compact.uniq
@@ -3753,31 +3711,47 @@ class YGG::Handlers::Action
   def action_effect( action, parameters )
     users   = action_target( "TARGET", [parameters[0]], true )
     targets = action_target( "TARGET", [parameters[1]], true )
-    case action.upcase
+    case action.upcase()
     when "ATTACKEFFECT", "ATTACK_EFFECT", "ATTACK EFFECT"
       users.each { |user|
-        user.equip_handle( 0 ).do_attack
-        $game_yggdrasil.action_attack( user, targets )
+        user.equip_handle( 0 ).do_attack()
+        $game_yggdrasil.action_attack(
+          { :user => user, :targets => targets }
+        )
       }
     when "SKILLEFFECT", "SKILL_EFFECT", "SKILL EFFECT"
       users.each { |user|
-        case parameters[2].upcase
+        case parameters[2].upcase()
         when "PRESET", "OBJ"
           sid = @skill_id
         else ; sid = parameters[2].to_i
         end
-        $game_yggdrasil.action_skill( user, targets, $data_skills[sid] )
+        $game_yggdrasil.action_skill(
+          { :user => user, :targets => targets, :obj => $data_skills[sid] }
+        )
       }
     when "ITEMEFFECT", "ITEM_EFFECT", "ITEM EFFECT"
       users.each { |user|
-        case parameters[2].upcase
+        case parameters[2].upcase()
         when "PRESET", "OBJ"
           iid = @item_id
         else ; iid = parameters[2].to_i
         end
-        $game_yggdrasil.action_item( user, targets, $data_items[iid] )
+        $game_yggdrasil.action_item(
+          { :user => user, :targets => targets, :obj => $data_items[iid] }
+        )
       }
     end
+    @affected_targets.clear()
+    (users).each { |t|
+      t.ygg_battler.clear_action_results() unless t.ygg_battler.nil?() unless t.nil?()
+    }
+    (targets).each { |t|
+      @affected_targets << t unless (t.ygg_battler.skipped ||
+        t.ygg_battler.missed ||
+        t.ygg_battler.evaded) unless t.ygg_battler.nil?()
+      t.ygg_battler.clear_action_results() unless t.ygg_battler.nil?() unless t.nil?()
+    }
     return 0
   end
 
@@ -3786,7 +3760,8 @@ class YGG::Handlers::Action
   #--------------------------------------------------------------------------#
   def action_guard( action, parameters )
     @user_event.guard_time = parameters[0].to_i
-    @user_event.equip_handle( 1 ).do_guard
+    @user_event.equip_handle( 1 ).do_guard()
+    return 0
   end
 
   #--------------------------------------------------------------------------#
@@ -3806,9 +3781,18 @@ class YGG::Handlers::Action
     end
     projectile = ::YGG::PROJECTILE_MAP[parameters[2].to_s]
     setup_code = ::YGG::PROJETILE_SETUP[parameters[3].to_s]
+    sp_code    = (parameters[4] || 0).to_s.to_i
     users.each { |user|
       pro = projectile.new( user, setup_code )
-      pro.moveto( user.x, user.y ) ; pro.set_direction( direction )
+      case sp_code
+      when 0
+        pro.moveto( user.x, user.y )
+      when 1
+        pro.moveto( *user.get_xy_infront( 1, 0 ) )
+      when 2
+        pro.moveto( *user.get_xy_infront( -1, 0 ) )
+      end
+      pro.set_direction( direction )
       $game_yggdrasil.add_projectile( pro )
     }
     return 0
@@ -3844,6 +3828,7 @@ class YGG::Handlers::Action
   #--------------------------------------------------------------------------#
   def action_parent_wait( action, parameters )
     @user_event.wait_count = parameters[0].to_i
+    return 1
   end
 
   #--------------------------------------------------------------------------#
@@ -3859,6 +3844,22 @@ class YGG::Handlers::Action
     return 1
   end
 
+  #--------------------------------------------------------------------------#
+  # * new-method :action_se
+  #--------------------------------------------------------------------------#
+  def action_se( action, parameters )
+    RPG::SE.new( parameters[0].to_s, parameters[1].to_i, parameters[2].to_i ).play()
+    return 0
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :action_me
+  #--------------------------------------------------------------------------#
+  def action_me( action, parameters )
+    RPG::ME.new( parameters[0].to_s, parameters[1].to_i, parameters[2].to_i ).play()
+    return 0
+  end
+
 end
 
 # // (YGG_MC) - Mix Code
@@ -3872,7 +3873,9 @@ class RPG::Animation
   #----------------------------------------------------------------------------#
   # * new-method :cell_count
   #----------------------------------------------------------------------------#
-  def cell_count ; end unless method_defined? :cell_count
+  def cell_count
+    16
+  end unless method_defined? :cell_count
 
 end
 
@@ -3891,7 +3894,7 @@ class RPG::BaseItem
   #----------------------------------------------------------------------------#
   # * new-method :pickup_sfx
   #----------------------------------------------------------------------------#
-  def pickup_sfx
+  def pickup_sfx()
     @pickup_sfx ||= self.note =~ YGG::REGEXP::BASE_ITEM::PICKUP_SFX ?
       RPG::SE.new( $1, $2.to_i, $3.to_i ) : ::YGG::SOUND_ITEM
     return @pickup_sfx
@@ -3900,7 +3903,7 @@ class RPG::BaseItem
   #----------------------------------------------------------------------------#
   # * new-method :drops_attraction?
   #----------------------------------------------------------------------------#
-  def drops_attraction? ; return @drops_attraction ; end
+  def drops_attraction?() ; return @drops_attraction ; end
 
 end
 
@@ -3912,8 +3915,8 @@ class RPG::Armor
   #----------------------------------------------------------------------------#
   # * super-method :drops_attraction?
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_end
-    super
+  def yggdrasil_1x6_cache_end()
+    super()
     @ygg_actions[0] ||= ::YGG.get_action_list( "GUARD_ACTION" )
   end
 
@@ -3932,8 +3935,8 @@ class RPG::UsableItem
   #----------------------------------------------------------------------------#
   # * super-method :yggdrasil_1x6_cache_start
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_start
-    super
+  def yggdrasil_1x6_cache_start()
+    super()
     @__use_target_select = false
     @guardable = false
   end
@@ -3956,8 +3959,8 @@ class RPG::UsableItem
   #----------------------------------------------------------------------------#
   # * super-method :yggdrasil_1x6_cache_end
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_end
-    super
+  def yggdrasil_1x6_cache_end()
+    super()
     case @scope
     when 0     # // None
       @ygg_actions[0] ||= ::YGG.get_action_list( "NORMAL_OBJ0" ).clone
@@ -4004,15 +4007,21 @@ class RPG::Enemy
   attr_accessor :atk_animation_id2
   attr_accessor :drop_items
   attr_accessor :gold_variation
-
+  attr_accessor :equip_icons
+  attr_accessor :use_equipment
+  attr_accessor :atk_act_name
+  attr_accessor :grd_act_name
   #----------------------------------------------------------------------------#
   # * super-method :yggdrasil_1x6_cache_check
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_start
-    super
-    @drop_items ||= [] ; @__drop_id = -1
-    @__drop = nil ; @__drop_reading = false
+  def yggdrasil_1x6_cache_start()
+    super()
+    @drop_items   ||= []  ; @__drop_id = -1
+    @__drop         = nil ; @__drop_reading = false
     @gold_variation = 0
+    @equip_icons    = Array.new( 2, 0 )
+    @use_equipment  = false
+    @atk_act_name, @grd_act_name = "Swing1", "GRise1"
   end
 
   #----------------------------------------------------------------------------#
@@ -4027,11 +4036,32 @@ class RPG::Enemy
       @drop_items[@__drop_id] = @__drop if @__drop_id > -1
       @__drop_id = -1 ; @__drop = nil ; @__drop_reading = false
     when YGG::REGEXP::ENEMY::DROP_ITEM1
-      @__drop_id = $1.to_i ; @__drop = DropItem.new ; @__drop_reading = true
+      @__drop_id = $1.to_i ; @__drop = DropItem.new() ; @__drop_reading = true
     when YGG::REGEXP::ENEMY::DROP_CLEAR
-      @drop_items.clear
+      @drop_items.clear()
     when YGG::REGEXP::ENEMY::GOLD_VARI
       @gold_variation = $1.to_i
+    when YGG::REGEXP::ENEMY::EQUIP_ICONS
+      icon = 0
+      eq_id = $1.to_i
+      n = $2
+      case n
+      when /(?:WEP|WEAPON)[ ](\d+)/i
+        icon = $data_weapons[$1.to_i].icon_index
+      when /(?:ARM|ARMOR)[ ](\d+)/i
+        icon = $data_armors[$1.to_i].icon_index
+      when /(?:SKL|SKILL)[ ](\d+)/i
+        icon = $data_skills[$1.to_i].icon_index
+      when /(?:ITE|ITEM)[ ](\d+)/i
+        icon = $data_items[$1.to_i].icon_index
+      else
+        icon = n.to_i
+      end
+      @equip_icons[eq_id] = icon
+    when YGG::REGEXP::ENEMY::USE_EQUIPMENT
+      @use_equipment = true
+    when YGG::REGEXP::ENEMY::NO_EQUIPMENT
+      @use_equipment = false
     else
       if @__drop_reading
         case line
@@ -4054,8 +4084,8 @@ class RPG::Enemy
   #----------------------------------------------------------------------------#
   # * super-method :yggdrasil_1x6_cache_end
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_end
-    super
+  def yggdrasil_1x6_cache_end()
+    super()
     @atk_animation_id  ||= 1
     @atk_animation_id2 ||= 0
     @ygg_actions[0]    ||= ::YGG.get_action_list( "NORMAL_ATTACK_EN" ) # // Attack Action
@@ -4087,16 +4117,16 @@ class RPG::State
   #----------------------------------------------------------------------------#
   # * new-method :yggdrasil_1x6_cache
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache
-    yggdrasil_1x6_cache_start
+  def yggdrasil_1x6_cache()
+    yggdrasil_1x6_cache_start()
     self.note.split(/[\r\n]+/).each { |line| yggdrasil_1x6_cache_check( line ) }
-    yggdrasil_1x6_cache_end
+    yggdrasil_1x6_cache_end()
   end
 
   #----------------------------------------------------------------------------#
   # * new-method :yggdrasil_1x6_cache_start
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_start
+  def yggdrasil_1x6_cache_start()
     @hold_ticks  = self.hold_turn * ::YGG::STATE_TURN_COUNTER
     @move_mod    = 0
     @effect_tone = Tone.new( 0, 0, 0, 0 )
@@ -4124,13 +4154,13 @@ class RPG::State
   #----------------------------------------------------------------------------#
   # * new-method :yggdrasil_1x6_cache_end
   #----------------------------------------------------------------------------#
-  def yggdrasil_1x6_cache_end
+  def yggdrasil_1x6_cache_end()
   end
 
   #----------------------------------------------------------------------------#
   # * new-method :slip_freq
   #----------------------------------------------------------------------------#
-  def slip_freq
+  def slip_freq()
     return self.slip_damage ? @slip_freq : 0
   end
 
@@ -4162,15 +4192,15 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :initialize
   #--------------------------------------------------------------------------#
-  def initialize
+  def initialize()
     setup_map( -1 )
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :hud
   #--------------------------------------------------------------------------#
-  def hud
-    @hud ||= YGG::Handlers::HudWrapper.new
+  def hud()
+    @hud ||= YGG::Handlers::HudWrapper.new()
     return @hud
   end
 
@@ -4189,7 +4219,7 @@ class YGG::System
   # * new-method :remove_pop
   #--------------------------------------------------------------------------#
   def remove_pop( pop_handler )
-    pop_handler.force_complete!
+    pop_handler.force_complete!()
     @pop_texts.delete( pop_handler )
     @new_poptexts.delete( pop_handler )
     return pophandler
@@ -4201,7 +4231,7 @@ class YGG::System
   def add_projectile( projectile )
     @projectiles << projectile
     @new_projectiles << projectile
-    projectile.pro_register
+    projectile.pro_register()
     return projectile
   end
 
@@ -4211,8 +4241,8 @@ class YGG::System
   def remove_projectile( projectile )
     @projectiles.delete( projectile )
     @new_projectiles.delete( projectile )
-    projectile.pro_unregister
-    projectile.force_terminate
+    projectile.pro_unregister()
+    projectile.force_terminate()
     return projectile
   end
 
@@ -4225,6 +4255,13 @@ class YGG::System
   # * new-method :remove_battler
   #--------------------------------------------------------------------------#
   def remove_battler( b ) ; @battlers -= [b] ; end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :flush_battlers
+  #--------------------------------------------------------------------------#
+  def flush_battlers()
+    @battlers.clear()
+  end
 
   #--------------------------------------------------------------------------#
   # * new-method :add_passage_obj
@@ -4243,52 +4280,52 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
-    update_poptexts
-    update_drops
-    update_roam_events
-    update_projectiles
-    update_hud
+  def update()
+    update_poptexts()
+    update_drops()
+    update_roam_events()
+    update_projectiles()
+    update_hud()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_hud
   #--------------------------------------------------------------------------#
-  def update_hud
-    self.hud.update
+  def update_hud()
+    self.hud.update()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_roam_events
   #--------------------------------------------------------------------------#
-  def update_roam_events
-    @roam_events.each { |ev| ev.update }
+  def update_roam_events()
+    @roam_events.each { |ev| ev.update() }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_projectiles
   #--------------------------------------------------------------------------#
-  def update_projectiles
+  def update_projectiles()
     @projectiles = @projectiles.inject([]) { |result, pro|
-      unless pro.terminated? ; pro.update ; result << pro
+      unless pro.terminated?() ; pro.update() ; result << pro
       else ; @new_projectiles.delete( pro ) ; pro.registered = false ; end
       result
-    } unless @projectiles.empty?
+    } unless @projectiles.empty?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :pop_texts
   #--------------------------------------------------------------------------#
-  def update_poptexts
+  def update_poptexts()
     @pop_texts = @pop_texts.inject([]) { |result, pop|
-      pop.update ; result << pop unless pop.complete? ; result
-    } unless @pop_texts.empty?
+      pop.update() ; result << pop unless pop.complete?() ; result
+    } unless @pop_texts.empty?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :pop_texts
   #--------------------------------------------------------------------------#
-  def pop_texts ; return @pop_texts ; end
+  def pop_texts() ; return @pop_texts ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :roam_xy
@@ -4296,7 +4333,7 @@ class YGG::System
   def roam_xy( x, y )
     return (
       @roam_events +
-      @passage_objs).inject([]) { |r, ev| r << ev if ev.pos?( x, y ) ; ev }
+      @passage_objs).inject([]) { |r, ev| r << ev if ev.pos?( x, y ) ; r }
   end
 
   #--------------------------------------------------------------------------#
@@ -4317,10 +4354,10 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :on?
   #--------------------------------------------------------------------------#
-  if ::YGG::ABS_SYSTEM_SWITCH.nil?
-    def on? ; return true ; end
+  if ::YGG::ABS_SYSTEM_SWITCH.nil?()
+    def on?() ; return true ; end
   else
-    def on? ; return $game_switches[::YGG::ABS_SYSTEM_SWITCH] ; end
+    def on?() ; return $game_switches[::YGG::ABS_SYSTEM_SWITCH] ; end
   end
 
   #--------------------------------------------------------------------------#
@@ -4328,15 +4365,15 @@ class YGG::System
   #--------------------------------------------------------------------------#
   def setup_map( map_id )
     @map_id          = map_id
-    @pop_texts     ||= [] ; @pop_texts.clear
-    @new_poptexts  ||= [] ; @new_poptexts.clear
-    @battlers      ||= [] ; @battlers.each { |b| b.ygg_unregister } ; @battlers.clear
-    @active_drops  ||= [] ; @active_drops.clear
-    @active_ranges ||= [] ; @active_ranges.clear
-    @projectiles   ||= [] ; @projectiles.clear
-    @new_projectiles||=[] ; @new_projectiles.clear
-    @roam_events   ||= [] ; @roam_events.clear
-    @passage_objs  ||= [] ; @passage_objs.clear
+    @pop_texts     ||= [] ; @pop_texts.clear()
+    @new_poptexts  ||= [] ; @new_poptexts.clear()
+    @battlers      ||= [] ; @battlers.each { |b| b.ygg_unregister() } ; @battlers.clear()
+    @active_drops  ||= [] ; @active_drops.clear()
+    @active_ranges ||= [] ; @active_ranges.clear()
+    @projectiles   ||= [] ; @projectiles.clear()
+    @new_projectiles||=[] ; @new_projectiles.clear()
+    @roam_events   ||= [] ; @roam_events.clear()
+    @passage_objs  ||= [] ; @passage_objs.clear()
   end
 
   #--------------------------------------------------------------------------#
@@ -4349,8 +4386,8 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :setup_itemmap
   #--------------------------------------------------------------------------#
-  def setup_itemmap
-    if $items_map.nil?
+  def setup_itemmap()
+    if $items_map.nil?()
       $items_map = get_map( ITEMS_MAPID )
       $items_map.events.values.each { |ev| ev.pages.each { |pg|
         pg.list = YGG.parse_event_list( pg.list ) } }
@@ -4387,7 +4424,7 @@ class YGG::System
       cc.moveto( dx, dy )
       drops.push( cc )
     end
-    unless gold.nil? || gold.eql?( 0 )
+    unless gold.nil?() || gold.eql?( 0 )
       cc = YGG::Drop_Character.new( YGG::Containers::GoldItem.new( gold ), YGG::GOLD_FADE_TIME )
       cc.moveto( x, y )
       drops.push( cc )
@@ -4402,20 +4439,20 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * new-method :items_map
   #--------------------------------------------------------------------------#
-  def items_map ; return $items_map ; end
+  def items_map() ; return $items_map ; end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update_drops
   #--------------------------------------------------------------------------#
-  def update_drops
-    @active_drops = @active_drops.inject([]) { |result, dr| dr.update
-      result.push( dr ) unless dr.timeout? ; result } unless @active_drops.empty?
+  def update_drops()
+    @active_drops = @active_drops.inject([]) { |result, dr| dr.update()
+      result.push( dr ) unless dr.timeout?() ; result } unless @active_drops.empty?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :active_drops
   #--------------------------------------------------------------------------#
-  def active_drops ; return @active_drops ; end
+  def active_drops() ; return @active_drops ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :drops_xy
@@ -4439,7 +4476,7 @@ module YGG::MixIns::Actor
   #--------------------------------------------------------------------------#
   # * new-method :create_drops_object
   #--------------------------------------------------------------------------#
-  def create_drops_object
+  def create_drops_object()
     return ::YGG::Containers::Drops.new( [], 0 )
   end
 
@@ -4453,7 +4490,7 @@ module YGG::MixIns::Enemy
   #--------------------------------------------------------------------------#
   # * new-method :create_drops_object
   #--------------------------------------------------------------------------#
-  def create_drops_object
+  def create_drops_object()
     return ::YGG::Containers::Drops.new( self.all_drops, self.calc_gold )
   end
 
@@ -4669,7 +4706,7 @@ module YGG::MixIns::Movement
   #--------------------------------------------------------------------------#
   # * new-method :half_forward
   #--------------------------------------------------------------------------#
-  def half_forward
+  def half_forward()
     case @direction
     when 2 ; half_down
     when 4 ; half_left
@@ -4681,7 +4718,7 @@ module YGG::MixIns::Movement
   #--------------------------------------------------------------------------#
   # * new-method :half_backward
   #--------------------------------------------------------------------------#
-  def half_backward
+  def half_backward()
     last_direction_fix = @direction_fix
     @direction_fix = true
     case @direction
@@ -4746,7 +4783,7 @@ module YGG::MixIns::Movement
   def limited_down( orx, ory, limit, dist=1 )
     dist_x = fr_distance_x_from(orx)
     dist_y = fr_distance_y_from(ory) + dist
-    move_down if (dist_x.abs + dist_y.abs) < limit
+    move_down() if (dist_x.abs + dist_y.abs) < limit
     return (dist_x.abs + dist_y.abs)
   end
 
@@ -4756,7 +4793,7 @@ module YGG::MixIns::Movement
   def limited_up( orx, ory, limit, dist=1 )
     dist_x = fr_distance_x_from(orx)
     dist_y = fr_distance_y_from(ory) - dist
-    move_up if (dist_x.abs + dist_y.abs) < limit
+    move_up() if (dist_x.abs + dist_y.abs) < limit
     return (dist_x.abs + dist_y.abs)
   end
 
@@ -4766,7 +4803,7 @@ module YGG::MixIns::Movement
   def limited_left( orx, ory, limit, dist=1 )
     dist_x = fr_distance_x_from(orx) - dist
     dist_y = fr_distance_y_from(ory)
-    move_left if (dist_x.abs + dist_y.abs) < limit
+    move_left() if (dist_x.abs + dist_y.abs) < limit
     return (dist_x.abs + dist_y.abs)
   end
 
@@ -4776,18 +4813,18 @@ module YGG::MixIns::Movement
   def limited_right( orx, ory, limit, dist=1 )
     dist_x = fr_distance_x_from(orx) + dist
     dist_y = fr_distance_y_from(ory)
-    move_right if (dist_x.abs + dist_y.abs) < limit
+    move_right() if (dist_x.abs + dist_y.abs) < limit
     return (dist_x.abs + dist_y.abs)
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :thrust_down
   #--------------------------------------------------------------------------#
-  def thrust_down
+  def thrust_down()
     dudspeed = @move_speed
     @move_speed = 6
-    half_down
-    thrust_wait
+    half_down()
+    thrust_wait()
     half_up( false )
     @move_speed = dudspeed
   end
@@ -4795,11 +4832,11 @@ module YGG::MixIns::Movement
   #--------------------------------------------------------------------------#
   # * new-method :thrust_up
   #--------------------------------------------------------------------------#
-  def thrust_up
+  def thrust_up()
     dudspeed = @move_speed
     @move_speed = 6
-    half_up
-    thrust_wait
+    half_up()
+    thrust_wait()
     half_down( false )
     @move_speed = dudspeed
   end
@@ -4807,11 +4844,11 @@ module YGG::MixIns::Movement
   #--------------------------------------------------------------------------#
   # * new-method :thrust_left
   #--------------------------------------------------------------------------#
-  def thrust_left
+  def thrust_left()
     dudspeed = @move_speed
     @move_speed = 6
-    half_left
-    thrust_wait
+    half_left()
+    thrust_wait()
     half_right( false )
     @move_speed = dudspeed
   end
@@ -4819,11 +4856,11 @@ module YGG::MixIns::Movement
   #--------------------------------------------------------------------------#
   # * new-method :thrust_right
   #--------------------------------------------------------------------------#
-  def thrust_right
+  def thrust_right()
     dudspeed = @move_speed
     @move_speed = 6
-    half_right
-    thrust_wait
+    half_right()
+    thrust_wait()
     half_left( false )
     @move_speed = dudspeed
   end
@@ -4831,19 +4868,19 @@ module YGG::MixIns::Movement
   #--------------------------------------------------------------------------#
   # * new-method :thrust_forward
   #--------------------------------------------------------------------------#
-  def thrust_forward
+  def thrust_forward()
     case @direction
-    when 2 ; thrust_down
-    when 4 ; thrust_left
-    when 6 ; thrust_right
-    when 8 ; thrust_up
+    when 2 ; thrust_down()
+    when 4 ; thrust_left()
+    when 6 ; thrust_right()
+    when 8 ; thrust_up()
     end
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :thrust_backward
   #--------------------------------------------------------------------------#
-  def thrust_backward
+  def thrust_backward()
     last_direction_fix = @direction_fix
     @direction_fix = true
     case @direction
@@ -4858,13 +4895,13 @@ module YGG::MixIns::Movement
   #--------------------------------------------------------------------------#
   # * new-method :ygg_dodge
   #--------------------------------------------------------------------------#
-  def ygg_dodge
+  def ygg_dodge()
     last_direction_fix = @direction_fix
     @direction_fix = true
     dodge_val = rand(2)
     case @direction
-    when 2, 8; dodge_val == 0 ? thrust_left : thrust_right
-    when 4, 6; dodge_val == 0 ? thrust_up : thrust_down
+    when 2, 8; dodge_val == 0 ? thrust_left() : thrust_right()
+    when 4, 6; dodge_val == 0 ? thrust_up() : thrust_down()
     end
     @direction_fix = last_direction_fix
   end
@@ -4964,18 +5001,34 @@ module YGG::MixIns::Movement
   # * new-method :turn_to_coord
   #--------------------------------------------------------------------------#
   def turn_to_coord( sx, sy )
-    if sx > self.x and sy == self.y    ; turn_right
-    elsif sx < self.x and sy == self.y ; turn_left
-    elsif sx == self.x and sy > self.y ; turn_down
-    elsif sx == self.x and sy < self.y ; turn_up
+    if sx > self.x and sy == self.y    ; turn_right()
+    elsif sx < self.x and sy == self.y ; turn_left()
+    elsif sx == self.x and sy > self.y ; turn_down()
+    elsif sx == self.x and sy < self.y ; turn_up()
     end
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :set_origin
   #--------------------------------------------------------------------------#
-  def set_origin
+  def set_origin()
     @origin ||= ::YGG::Pos.new( self.x, self.y ) ; @origin.set( self.x, self.y )
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :get_xy_infront
+  #--------------------------------------------------------------------------#
+  def get_xy_infront( dist, sway )
+    case direction
+    when 2 # // Down
+      return [x+sway, y+dist]
+    when 4 # // Left
+      return [x-dist, y+sway]
+    when 6 # // Right
+      return [x+dist, y-sway]
+    when 8 # // Up
+      return [x-sway, y-dist]
+    end
   end
 
 end
@@ -4993,78 +5046,78 @@ module YGG::MixIns::Battle
   #--------------------------------------------------------------------------#
   # * new-method :ai_operated?
   #--------------------------------------------------------------------------#
-  def ai_operated?
+  def ai_operated?()
     return @ai_operated
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :hp_visible?
   #--------------------------------------------------------------------------#
-  def hp_visible?
-    return $game_yggdrasil.on? && @hp_visible
+  def hp_visible?()
+    return $game_yggdrasil.on?() && @hp_visible
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :mp_visible?
   #--------------------------------------------------------------------------#
-  def mp_visible?
-    return $game_yggdrasil.on? && @mp_visible
+  def mp_visible?()
+    return $game_yggdrasil.on?() && @mp_visible
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_can_move?
   #--------------------------------------------------------------------------#
-  def ygg_can_move? ; return true ; end
+  def ygg_can_move?() ; return true ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_attacker | ygg_battler
   #--------------------------------------------------------------------------#
-  def ygg_attacker ; return nil ; end
-  def ygg_battler  ; return ygg_attacker ; end
+  def ygg_attacker() ; return nil ; end
+  def ygg_battler()  ; return ygg_attacker() ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :wild_type?
   #--------------------------------------------------------------------------#
-  def wild_type? ; return false ; end
+  def wild_type?() ; return false ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_enemy?
   #--------------------------------------------------------------------------#
-  def ygg_enemy? ; return false ; end
+  def ygg_enemy?() ; return false ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_ally?
   #--------------------------------------------------------------------------#
-  def ygg_ally? ; return false ; end
+  def ygg_ally?() ; return false ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_death
   #--------------------------------------------------------------------------#
-  def ygg_death ; end
+  def ygg_death() ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_boss?
   #--------------------------------------------------------------------------#
-  def ygg_boss? ; return false end
+  def ygg_boss?() ; return false end
 
   #--------------------------------------------------------------------------#
   # * new-method :process_extension_actions
   #--------------------------------------------------------------------------#
-  def process_extension_actions ; end
+  def process_extension_actions() ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_can_attack?
   #--------------------------------------------------------------------------#
-  def ygg_can_attack? ; return true ; end
+  def ygg_can_attack?() ; return true ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :targetable?
   #--------------------------------------------------------------------------#
   def targetable?( target )
-    return false if self.ygg_battler.nil?
+    return false if self.ygg_battler.nil?()
     return true if target.upcase == "ALL"
-    return true if self.ygg_ally? && target == "ALLY"
-    return true if self.ygg_enemy? && target == "ENEMY"
+    return true if self.ygg_ally?() && target == "ALLY"
+    return true if self.ygg_enemy?() && target == "ENEMY"
     return false
   end
 
@@ -5072,8 +5125,8 @@ module YGG::MixIns::Battle
   # * new-method :ally_character?
   #--------------------------------------------------------------------------#
   def ally_character?( char )
-    return true if self.ygg_ally? && char.ygg_ally?
-    return true if self.ygg_enemy? && char.ygg_enemy?
+    return true if self.ygg_ally?() && char.ygg_ally?()
+    return true if self.ygg_enemy?() && char.ygg_enemy?()
     return false
   end
 
@@ -5088,15 +5141,15 @@ module YGG::MixIns::Battle
   # * new-method :ygg_correct_target
   #--------------------------------------------------------------------------#
   def ygg_correct_target( target )
-    return "ALLY" if self.ygg_enemy? && target =~ /ENEMY/i
-    return "ENEMY" if self.ygg_enemy? && target =~ /ALLY/i
+    return "ALLY" if self.ygg_enemy?() && target =~ /ENEMY/i
+    return "ENEMY" if self.ygg_enemy?() && target =~ /ALLY/i
     return target
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_abs_update
   #--------------------------------------------------------------------------#
-  def ygg_abs_update
+  def ygg_abs_update()
     @guard_time = [@guard_time - 1, 0].max
   end
 # ---------------------------------------------------------------------------- #
@@ -5130,16 +5183,16 @@ module YGG::MixIns::Battle
   #--------------------------------------------------------------------------#
   # * new-method :update_battler
   #--------------------------------------------------------------------------#
-  def update_battler
-    update_states
-    self.ygg_battler.update_obj_handles
-    self.ygg_battler.update_cooldown
+  def update_battler()
+    update_states()
+    self.ygg_battler.update_obj_handles()
+    self.ygg_battler.update_cooldown()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_states
   #--------------------------------------------------------------------------#
-  def update_states
+  def update_states()
     self.ygg_battler.update_states
   end
 
@@ -5175,7 +5228,7 @@ module YGG::MixIns::Battle
     end
     for coo in coords
       o = ygg_get_targets( coo[0]+self.x, coo[1]+self.y, type, true )
-      return o unless o.empty?
+      return o unless o.empty?()
     end
     return []
   end
@@ -5186,7 +5239,6 @@ end
 # ** YGG::MixIns::AI
 #==============================================================================#
 module YGG::MixIns::AI
-
   #--------------------------------------------------------------------------#
   # * Public Instance Variables
   #--------------------------------------------------------------------------#
@@ -5212,7 +5264,6 @@ module YGG::MixIns::AI
   def ygg_update_ai
     @ai_engine.update unless @ai_engine.nil?
   end
-
 end
 
 #==============================================================================#
@@ -5223,7 +5274,7 @@ module YGG::MixIns::Player
   #--------------------------------------------------------------------------#
   # * new-method :drop_attraction?
   #--------------------------------------------------------------------------#
-  def drop_attraction?
+  def drop_attraction?()
     return self.ygg_battler.drops_attraction? unless self.ygg_battler.nil?
     return false
   end
@@ -5257,26 +5308,27 @@ class Game_Character
   attr_accessor :zoom_x, :zoom_y
   attr_accessor :wait_count
 
-  attr_reader :action_handle
   attr_accessor :ygg_invincible
   attr_accessor :guard_time
+
+  attr_reader :action_handle
 
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_gmc_mixin_initialize :initialize unless $@
+  alias :ygg_gmc_mixin_initialize :initialize
   def initialize( *args, &block )
     ygg_gmc_mixin_initialize( *args, &block )
-    ygg_initialize
+    ygg_initialize()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_initialize
   #--------------------------------------------------------------------------#
-  def ygg_initialize
+  def ygg_initialize()
     @use_equipment     = false
-    @equipment_handles = [::YGG::Handlers::Equip.new( self, 0 ),
-                          ::YGG::Handlers::Equip.new( self, 1 )]
+    @equipment_handles = [::YGG::Handlers::Equip.new( 0 ),
+                          ::YGG::Handlers::Equip.new( 1 )]
     @action_handle     = ::YGG::Handlers::Action.new( self, [] )
     @free_act_handles  = []
     @ygg_registered    = false
@@ -5288,7 +5340,7 @@ class Game_Character
 
     @move_speed_mod    = 0
 
-    reset_tone
+    reset_tone()
 
     @zoom_x, @zoom_y   = 1.0, 1.0
 
@@ -5298,18 +5350,28 @@ class Game_Character
 
     @guard_time        = 0
 
-    ygg_register if $game_system.yggdrasil_on?
+    ygg_register if $game_yggdrasil.on?
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :refresh_handles
+  #--------------------------------------------------------------------------#
+  def refresh_handles
+    @equipment_handles.each do |hnd|
+      hnd.refresh
+    end
+    @action_handle.parent_event = self
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :pop_enabled?
   #--------------------------------------------------------------------------#
-  def pop_enabled? ; return true ; end
+  def pop_enabled?() ; return true ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :reset_tone
   #--------------------------------------------------------------------------#
-  def reset_tone
+  def reset_tone()
     @tone              = Tone.new( 0, 0, 0, 0 )
     @target_tone       = Tone.new( 0, 0, 0, 0 )
     @tone_time         = 60.0
@@ -5318,7 +5380,7 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :screen_rect
   #--------------------------------------------------------------------------#
-  def screen_rect
+  def screen_rect()
     @screen_rect ||= Rect.new( -32, -32, Graphics.width, Graphics.height )
     return @screen_rect
   end unless method_defined? :screen_rect
@@ -5326,7 +5388,7 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :onScreen?
   #--------------------------------------------------------------------------#
-  def onScreen?
+  def onScreen?()
     r = self.screen_rect
     return self.screen_x.between?( r.x, r.width ) && self.screen_y.between?( r.y, r.height )
   end
@@ -5334,7 +5396,7 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :limitedOnScreen?
   #--------------------------------------------------------------------------#
-  def limitedOnScreen?
+  def limitedOnScreen?()
     return false unless screen_x.between?( 0, Graphics.width ) && screen_y.between?( 0, Graphics.height )
     return true
   end
@@ -5359,7 +5421,7 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * overwrite-method :update_move
   #--------------------------------------------------------------------------#
-  def update_move
+  def update_move()
     distance = 2 ** self.move_speed   # Convert to movement distance
     distance *= 2 if dash?        # If dashing, double it
     @real_x = [@real_x - distance, @x * 256].max if @x * 256 < @real_x
@@ -5377,7 +5439,7 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * overwrite-method :update_animation
   #--------------------------------------------------------------------------#
-  def update_animation
+  def update_animation()
     speed = self.move_speed + (dash? ? 1 : 0)
     if @anime_count > 18 - speed * 2
       if not @step_anime and @stop_count > 0
@@ -5392,14 +5454,14 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :extra_speed_mod
   #--------------------------------------------------------------------------#
-  def extra_speed_mod
-    return self.ygg_battler.nil? ? 0 : ygg_battler.move_mod
+  def extra_speed_mod()
+    return self.ygg_battler.nil?() ? 0 : ygg_battler.move_mod
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :move_speed
   #--------------------------------------------------------------------------#
-  def move_speed
+  def move_speed()
     return @move_speed + @move_speed_mod + extra_speed_mod
   end
 
@@ -5412,7 +5474,7 @@ class Game_Character
   # * new-method :equip_icon
   #--------------------------------------------------------------------------#
   def equip_icon( eq_id )
-    return 0 if self.ygg_battler.nil?
+    return 0 if self.ygg_battler.nil?()
     return self.ygg_battler.equip_icon( eq_id )
   end
 
@@ -5420,7 +5482,7 @@ class Game_Character
   # * new-method :equip_atk_act_name
   #--------------------------------------------------------------------------#
   def equip_atk_act_name( eq_id )
-    return "" if self.ygg_battler.nil?
+    return "" if self.ygg_battler.nil?()
     return self.ygg_battler.equip_atk_act_name( eq_id )
   end
 
@@ -5428,32 +5490,38 @@ class Game_Character
   # * new-method :equip_grd_act_name
   #--------------------------------------------------------------------------#
   def equip_grd_act_name( eq_id )
-    return "" if self.ygg_battler.nil?
+    return "" if self.ygg_battler.nil?()
     return self.ygg_battler.equip_grd_act_name( eq_id )
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_gmc_mixin_update :update unless $@
+  alias :ygg_gmc_mixin_update :update
   def update( *args, &block )
     ygg_gmc_mixin_update( *args, &block )
-    if self.ygg_battler.nil?
-      ygg_unregister if @ygg_registered
+    if self.ygg_battler.nil?()
+      ygg_unregister() if @ygg_registered
     else
-      abs_on = $game_system.yggdrasil_on?
+      abs_on = $game_system.yggdrasil_on?()
       if abs_on
         @target_tone = self.ygg_battler.effect_tone
         if self.ygg_battler.character_need_refresh
           self.ygg_battler.character_need_refresh = false
         end
-        ygg_register unless @ygg_registered
-        @equipment_handles.each { |eq| eq.update }
-        self.ygg_engage.update unless self.ygg_engage.nil?
-        @action_handle.update
+        ygg_register() unless @ygg_registered
+        @equipment_handles.each { |eq|
+          eq.icon_index    = self.equip_icon( eq.eq_id )
+          eq.attack_action = self.equip_atk_act_name( eq.eq_id )
+          eq.guard_action  = self.equip_grd_act_name( eq.eq_id )
+          eq.direction     = self.direction
+          eq.guard_time    = self.guard_time
+          eq.update() }
+        self.ygg_engage.update() unless self.ygg_engage.nil?()
+        @action_handle.update()
         @free_act_handles = @free_act_handles.inject([]) { |r, h|
-          h.update ; r << h if h.busy? ; r
-        } unless @free_act_handles.empty?
+          h.update() ; r << h if h.busy?() ; r
+        } unless @free_act_handles.empty?()
       end
     end
     [:red, :green, :blue, :gray].each { |s|
@@ -5469,14 +5537,14 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_engage
   #--------------------------------------------------------------------------#
-  def ygg_engage
+  def ygg_engage()
     return ygg_battler.ygg_engage
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_register
   #--------------------------------------------------------------------------#
-  def ygg_register
+  def ygg_register()
     $game_yggdrasil.add_battler( self )
     @ygg_registered = true
   end
@@ -5484,7 +5552,7 @@ class Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_unregister
   #--------------------------------------------------------------------------#
-  def ygg_unregister
+  def ygg_unregister()
     $game_yggdrasil.remove_battler( self )
     @ygg_registered = false
   end
@@ -5550,14 +5618,14 @@ module YGG
     #--------------------------------------------------------------------------#
     # * super-method :dispose
     #--------------------------------------------------------------------------#
-    def dispose
+    def dispose()
       case BAR_DRAW_MODE
       when 0
-        @bar.dispose
+        @bar.dispose()
       when 1
-        self.bitmap.dispose
+        self.bitmap.dispose()
       end
-      super
+      super()
     end
 
   case BAR_DRAW_MODE
@@ -5566,10 +5634,10 @@ module YGG
     #--------------------------------------------------------------------------#
     # * super-method :update
     #--------------------------------------------------------------------------#
-    def update
-      super
-      val = @value_proc.call #* 100
-      max = @max_proc.call #* 100
+    def update()
+      super()
+      val = @value_proc.call() #* 100
+      max = @max_proc.call() #* 100
       if (val != @last_value || max != @last_max)
         if max.eql?( 0 )
           @bar.src_rect.width = 0
@@ -5594,18 +5662,18 @@ module YGG
     #--------------------------------------------------------------------------#
     # * super-method :update
     #--------------------------------------------------------------------------#
-    def update
-      super
-      val = @value_proc.call #* 100
-      max = @max_proc.call #* 100
+    def update()
+      super()
+      val = @value_proc.call() #* 100
+      max = @max_proc.call() #* 100
       if (val != @last_value || max != @last_max)
-        self.bitmap.clear
+        self.bitmap.clear()
         base = Cache.system( @base_name )
         bar  = Cache.system( @bar_name )
         self.bitmap.blt( 0, 0, base, base.rect )
         unless max.eql?( 0 )
           bar_width = bar.width * val / max
-          rect = bar.rect.clone
+          rect = bar.rect.clone()
           rect.width = bar_width
           self.bitmap.blt( @baroffsets.x, @baroffsets.y, bar, rect )
         end
@@ -5635,7 +5703,7 @@ module YGG
       val_proc = Proc.new { @parent.character.ygg_attacker.hp }
       max_proc = Proc.new { @parent.character.ygg_attacker.maxhp }
       base_name= "1x6Graphics/EventBarBase"
-      if parent.character.ygg_attacker.actor?
+      if parent.character.ygg_attacker.actor?()
         bar_name = "1x6Graphics/EventBar2"
       else
         bar_name = "1x6Graphics/EventBar3"
@@ -5648,10 +5716,10 @@ module YGG
     #--------------------------------------------------------------------------#
     # * super-method :update
     #--------------------------------------------------------------------------#
-    def update
+    def update()
       self.opacity = @parent.character.ygg_engage.bar_opacity
-      self.visible = @parent.character.hp_visible? && @parent.visible
-      super
+      self.visible = @parent.character.hp_visible?() && @parent.visible
+      super()
     end
 
   end
@@ -5676,10 +5744,10 @@ module YGG
     #--------------------------------------------------------------------------#
     # * super-method :update
     #--------------------------------------------------------------------------#
-    def update
+    def update()
       #self.opacity = @parent.character.ygg_engage.bar_opacity
-      self.visible = @parent.character.mp_visible? && @parent.visible
-      super
+      self.visible = @parent.character.mp_visible?() && @parent.visible
+      super()
     end
 
   end
@@ -5694,105 +5762,105 @@ class Sprite_Character < Sprite_Base
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg1x6_hpmp_spc_initialize :initialize unless $@
+  alias :ygg1x6_hpmp_spc_initialize :initialize
   def initialize( *args )
     ygg1x6_hpmp_spc_initialize( *args )
-    create_bars
-    update_bars
+    create_bars()
+    update_bars()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_bars
   #--------------------------------------------------------------------------#
-  def create_bars
-    unless @character.ygg_battler.nil?
-      create_hp_bar if @hp_bar.nil? if ::YGG::USE_HPBAR
-      create_mp_bar if @mp_bar.nil? if ::YGG::USE_MPBAR
+  def create_bars()
+    unless @character.ygg_battler.nil?()
+      create_hp_bar() if @hp_bar.nil?() if ::YGG::USE_HPBAR
+      create_mp_bar() if @mp_bar.nil?() if ::YGG::USE_MPBAR
     end
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_hp_bar
   #--------------------------------------------------------------------------#
-  def create_hp_bar
-    return if @character.ygg_battler.nil?
+  def create_hp_bar()
+    return if @character.ygg_battler.nil?()
     @hp_bar = ::YGG::Sprites::HpBar.new( self )
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_mp_bar
   #--------------------------------------------------------------------------#
-  def create_mp_bar
-    return if @character.ygg_battler.nil?
+  def create_mp_bar()
+    return if @character.ygg_battler.nil?()
     @mp_bar = ::YGG::Sprites::MpBar.new( self )
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :dispose
   #--------------------------------------------------------------------------#
-  alias :ygg1x6_hpmp_spc_dispose :dispose unless $@
-  def dispose
-    dispose_bars
-    ygg1x6_hpmp_spc_dispose
+  alias :ygg1x6_hpmp_spc_dispose :dispose
+  def dispose()
+    dispose_bars()
+    ygg1x6_hpmp_spc_dispose()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :dispose_bars
   #--------------------------------------------------------------------------#
-  def dispose_bars
-    dispose_hp_bar unless @hp_bar.nil?
-    dispose_mp_bar unless @mp_bar.nil?
+  def dispose_bars()
+    dispose_hp_bar() unless @hp_bar.nil?()
+    dispose_mp_bar() unless @mp_bar.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :dispose_hp_bar
   #--------------------------------------------------------------------------#
-  def dispose_hp_bar ; @hp_bar.dispose ; @hp_bar = nil ; end
+  def dispose_hp_bar() ; @hp_bar.dispose() ; @hp_bar = nil ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :dispose_mp_bar
   #--------------------------------------------------------------------------#
-  def dispose_mp_bar ; @mp_bar.dispose ; @mp_bar = nil ; end
+  def dispose_mp_bar() ; @mp_bar.dispose() ; @mp_bar = nil ; end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg1x6_hpmp_spc_update :update unless $@
-  def update
-    ygg1x6_hpmp_spc_update
-    update_bars unless @character.nil?
+  alias :ygg1x6_hpmp_spc_update :update
+  def update()
+    ygg1x6_hpmp_spc_update()
+    update_bars() unless @character.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_bars
   #--------------------------------------------------------------------------#
-  def update_bars
-    update_hp_bar unless @hp_bar.nil?
-    update_mp_bar unless @mp_bar.nil?
+  def update_bars()
+    update_hp_bar() unless @hp_bar.nil?()
+    update_mp_bar() unless @mp_bar.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_hp_bar
   #--------------------------------------------------------------------------#
-  def update_hp_bar
-    if @hp_bar.nil? && !@character.ygg_attacker.nil?
-      create_hp_bar
-    elsif !@hp_bar.nil? && @character.ygg_attacker.nil?
-      dispose_hp_bar
+  def update_hp_bar()
+    if @hp_bar.nil?() && !@character.ygg_attacker.nil?()
+      create_hp_bar()
+    elsif !@hp_bar.nil?() && @character.ygg_attacker.nil?()
+      dispose_hp_bar()
     end
-    @hp_bar.update unless @hp_bar.nil?
+    @hp_bar.update() unless @hp_bar.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_mp_bar
   #--------------------------------------------------------------------------#
-  def update_mp_bar
-    if @mp_bar.nil? && !@character.ygg_attacker.nil?
-      create_mp_bar
-    elsif !@mp_bar.nil? && @character.ygg_attacker.nil?
-      dispose_mp_bar
+  def update_mp_bar()
+    if @mp_bar.nil?() && !@character.ygg_attacker.nil?()
+      create_mp_bar()
+    elsif !@mp_bar.nil?() && @character.ygg_attacker.nil?()
+      dispose_mp_bar()
     end
-    @mp_bar.update unless @mp_bar.nil?
+    @mp_bar.update() unless @mp_bar.nil?()
   end
 
 end if ::YGG::USE_STAT_BARS
@@ -5813,7 +5881,7 @@ module YGG
   #--------------------------------------------------------------------------#
     def self.create_pop( setup_data={} )
       character  = setup_data[:character]
-      bat        = setup_data[:battler] || (character.nil? ? nil : character.ygg_battler)
+      bat        = setup_data[:battler] || (character.nil?() ? nil : character.ygg_battler)
       type       = setup_data[:type] || :nil
       parameters = setup_data[:parameters] || []
       move_rule  = :default
@@ -5855,7 +5923,7 @@ module YGG
                       :crit_default] if bat.critical if YGG::SHOW_CRITICAL
         pop_stack << [POPUP_SETTINGS[:guard],
                       YGG::POPUP_RULES["GUARD"],
-                      :guard_default] if bat.guarding? if YGG::SHOW_GUARD
+                      :guard_default] if bat.guarding?() if YGG::SHOW_GUARD
         if type == :skill_damage || type == :item_damage
           skip_stack = false
           if bat.mp_damage > 0
@@ -5895,8 +5963,9 @@ module YGG
         pop_stack << [text, rule, move_rule]
       when :custom
         rule = [
-          setup_data[:font_size] || font.size,
+          setup_data[:font_size] || Font.default_size,
           setup_data[:font_color] || Font.default_color,
+          setup_data[:font_name] || Font.default_name,
           [(setup_data[:font_bold] || Font.default_bold) ? "BOLD" : "NO BOLD",
            (setup_data[:font_italic] || Font.default_italic) ? "ITALIC" : "NO ITALIC",
            (setup_data[:font_shadow] || Font.default_shadow) ? "SHADOW" : "NO SHADOW"
@@ -5907,7 +5976,7 @@ module YGG
       end
       pop_stack.each { |pop|
         text, rule, move_rule = *pop
-        font        = Font.new
+        font        = Font.new()
         proprule    = rule[2].inject([]) { |r, s| s.upcase }
         colors      = rule[1].kind_of?( Array ) ? rule[1] : [rule[1], rule[1]]
         font.name   = rule[3].empty? ? Font.default_name : rule[3]
@@ -5918,8 +5987,8 @@ module YGG
         font.bold   = false if proprule.include?("NO BOLD")
         font.italic = false if proprule.include?("NO ITALIC")
         font.shadow = false if proprule.include?("NO SHADOW")
-        font.color  = bat.nil? ? colors[1] : (bat.actor? ? colors[1] : colors[0])
-        $game_yggdrasil.add_pop( self.new( text, font, move_rule ), character.x, character.y )
+        font.color  = bat.nil?() ? colors[1] : (bat.actor?() ? colors[1] : colors[0])
+        $game_yggdrasil.add_pop( PopText.new( text, font, move_rule ), character.x, character.y )
       }
     end
 
@@ -5969,37 +6038,37 @@ module YGG
         @y_add      = setup_data[:y_add] || 4
         @gravity    = setup_data[:gravity] || GRAVITY
         @floor_val  = setup_data[:floor_val] || 0
-        reset
+        reset()
       end
 
     #--------------------------------------------------------------------------#
     # * new-method :reset
     #--------------------------------------------------------------------------#
-      def reset
+      def reset()
         @x, @y, @ox, @oy = *@start_settings
         @finished = false
         @pause_update = false
-        prep_pop
+        prep_pop()
       end
 
     #--------------------------------------------------------------------------#
     # * new-method :x_init_velocity
     #--------------------------------------------------------------------------#
-      def x_init_velocity
+      def x_init_velocity()
         return @x_velocity * ( rand(@x_boost) + @x_add )
       end
 
     #--------------------------------------------------------------------------#
     # * new-method :y_init_velocity
     #--------------------------------------------------------------------------#
-      def y_init_velocity
+      def y_init_velocity()
         return @y_velocity * ( rand(@y_boost) + @y_add )
       end
 
     #--------------------------------------------------------------------------#
     # * new-method :prep_pop
     #--------------------------------------------------------------------------#
-      def prep_pop
+      def prep_pop()
         @now_x_speed = x_init_velocity
         @now_y_speed = y_init_velocity
         @potential_x_energy = 0.0
@@ -6011,7 +6080,7 @@ module YGG
     #--------------------------------------------------------------------------#
     # * new-method :update
     #--------------------------------------------------------------------------#
-      def update
+      def update()
         return if @finished or @pause_update
         if @pop_duration <= TRANSEPARENT_START
           @x += TRANSEPARENT_X_SLIDE if @speed_off_x == 0
@@ -6072,14 +6141,14 @@ module YGG
     end
 
   #--------------------------------------------------------------------------#
-  # * new-method :complete?
+  # * new-method :complete?()
   #--------------------------------------------------------------------------#
-    def complete? ; return @completed ; end
+    def complete?() ; return @completed ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-    def update
+    def update()
       case @poptext.move_rule
       when :default
         case @frame
@@ -6096,7 +6165,7 @@ module YGG
           @completed = true
         end
       when :attack_default, :skill_default, :item_default
-        @bounce_handle.update
+        @bounce_handle.update()
         @ox, @oy = @bounce_handle.ox, -@bounce_handle.oy
         @completed = @bounce_handle.finished
       when :exp_default
@@ -6175,9 +6244,9 @@ module YGG
   #--------------------------------------------------------------------------#
   # * new-method :screen_|x/y/z
   #--------------------------------------------------------------------------#
-    def screen_x ; return super + @ox      ; end
-    def screen_y ; return super + @oy + 32 ; end
-    def screen_z ; return super + @oz      ; end
+    def screen_x() ; return super() + @ox      ; end
+    def screen_y() ; return super() + @oy + 32 ; end
+    def screen_z() ; return super() + @oz      ; end
 
   end
 
@@ -6197,23 +6266,36 @@ module YGG
   #--------------------------------------------------------------------------#
     def initialize( viewport, pophandler )
       super( viewport )
-      @pophandler = pophandler
-      self.bitmap = Bitmap.new( @pophandler.width, @pophandler.height )
-      self.ox = @pophandler.width / 2
-      self.bitmap.font = @pophandler.poptext.font
+      @pophandler      = pophandler
+      self.bitmap      = Bitmap.new( @pophandler.width, @pophandler.height )
+      self.ox          = @pophandler.width / 2
+      self.bitmap.font = @pophandler.poptext.font.clone
       self.bitmap.draw_text( 0, 0, @pophandler.width, 24, @pophandler.poptext.text, 1 )
+    end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :dispose
+  #--------------------------------------------------------------------------#
+    def dispose()
+      @pophandler = nil
+      unless self.bitmap.nil?()
+        self.bitmap.font = Font.new()
+        self.bitmap.dispose()
+      end
+      self.bitmap = nil
+      super()
     end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-    def update
-      super
-      self.x = @pophandler.screen_x
-      self.y = @pophandler.screen_y
-      self.z = @pophandler.screen_z
-      self.zoom_x = @pophandler.zoom_x
-      self.zoom_y = @pophandler.zoom_y
+    def update()
+      super()
+      self.x       = @pophandler.screen_x
+      self.y       = @pophandler.screen_y
+      self.z       = @pophandler.screen_z
+      self.zoom_x  = @pophandler.zoom_x
+      self.zoom_y  = @pophandler.zoom_y
       self.opacity = @pophandler.opacity
       @completed   = @pophandler.completed
     end
@@ -6230,37 +6312,37 @@ module YGG
     def initialize( viewport )
       @viewport = viewport
       @pop_sprites = []
-      create_pops
+      create_pops()
     end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_pops
   #--------------------------------------------------------------------------#
-    def create_pops
-      $game_yggdrasil.new_poptexts.clear
+    def create_pops()
+      $game_yggdrasil.new_poptexts.clear()
       $game_yggdrasil.pop_texts.each { |hnd| add_pop( hnd ) }
     end
 
   #--------------------------------------------------------------------------#
   # * new-method :dispose
   #--------------------------------------------------------------------------#
-    def dispose
-      @pop_sprites.each { |sp| sp.dispose }
-      @pop_sprites.clear
+    def dispose()
+      @pop_sprites.each { |sp| sp.dispose() }
+      @pop_sprites.clear()
     end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-    def update
-      unless $game_yggdrasil.new_poptexts.empty?
+    def update()
+      unless $game_yggdrasil.new_poptexts.empty?()
         $game_yggdrasil.new_poptexts.each { |hnd| add_pop( hnd ) }
-        $game_yggdrasil.new_poptexts.clear
+        $game_yggdrasil.new_poptexts.clear()
       end
       @pop_sprites = @pop_sprites.inject([]) { |result, sprite|
-        sprite.update ; sprite.dispose if sprite.completed
-        result << sprite unless sprite.disposed? ; result
-      } unless @pop_sprites.empty?
+        sprite.update() ; sprite.dispose() if sprite.completed
+        result << sprite unless sprite.disposed?() ; result
+      } unless @pop_sprites.empty?()
     end
 
   #--------------------------------------------------------------------------#
@@ -6287,35 +6369,35 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * new-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_spm_ptxt_initialize :initialize unless $@
+  alias :ygg_spm_ptxt_initialize :initialize
   def initialize( *args, &block )
     ygg_spm_ptxt_initialize( *args, &block )
-    create_poptext_spriteset
+    create_poptext_spriteset()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_poptext_spriteset
   #--------------------------------------------------------------------------#
-  def create_poptext_spriteset
+  def create_poptext_spriteset()
     @poptext_spriteset = YGG::PopSpriteset.new( @viewport2 )
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :dispose
   #--------------------------------------------------------------------------#
-  alias :ygg_spm_ptxt_dispose :dispose unless $@
+  alias :ygg_spm_ptxt_dispose :dispose
   def dispose( *args, &block )
-    @poptext_spriteset.dispose unless @poptext_spriteset.nil?
+    @poptext_spriteset.dispose() unless @poptext_spriteset.nil?()
     ygg_spm_ptxt_dispose( *args, &block )
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_spm_ptxt_update :update unless $@
+  alias :ygg_spm_ptxt_update :update
   def update( *args, &block )
     ygg_spm_ptxt_update( *args, &block )
-    @poptext_spriteset.update unless @poptext_spriteset.nil?
+    @poptext_spriteset.update() unless @poptext_spriteset.nil?()
   end
 
 end if ::YGG::USE_TEXT_POP
@@ -6351,7 +6433,7 @@ class YGG::Drops_Window < ::Sprite
     @background.bitmap.fill_rect( BORDER_SIZE, BORDER_SIZE,
       width-(BORDER_SIZE*2), WLH-(BORDER_SIZE*2),
       Color.new( 0, 0, 0 ) )
-    @background.bitmap.blur ; @background.bitmap.blur
+    @background.bitmap.blur() ; @background.bitmap.blur()
     @background.opacity = 198
     self.bitmap = Bitmap.new( width, WLH )
     self.src_rect.set( 0, 0, width, WLH )
@@ -6363,12 +6445,12 @@ class YGG::Drops_Window < ::Sprite
   #--------------------------------------------------------------------------#
   # * super-method :dispose
   #--------------------------------------------------------------------------#
-  def dispose
-    unless @background.nil?
-      @background.bitmap.dispose ; @background.dispose
+  def dispose()
+    unless @background.nil?()
+      @background.bitmap.dispose() ; @background.dispose()
     end
-    self.bitmap.dispose
-    super
+    self.bitmap.dispose()
+    super()
   end
 
   #--------------------------------------------------------------------------#
@@ -6434,8 +6516,8 @@ class YGG::Drops_Window < ::Sprite
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-  def update
-    super
+  def update()
+    super()
     @change_time -= 1 unless @change_time == 0
     if @change_time <= FADE_LIMIT
       self.opacity -= 255.0 / FADE_SPEED
@@ -6444,7 +6526,7 @@ class YGG::Drops_Window < ::Sprite
     end
     if @change_time <= 0
       unless @cleared
-        self.bitmap.clear
+        self.bitmap.clear()
         @cleared = true
       end
       unless $game_player.ygg_gained_items.empty?
@@ -6513,7 +6595,7 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * new-method :animation?
   #--------------------------------------------------------------------------#
-  def animation? ; return !@animation.nil? ; end
+  def animation? ; return !@animation.nil?() ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :width
@@ -6534,13 +6616,13 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   # * new-method :flash
   #--------------------------------------------------------------------------#
   def flash( color, duration )
-    @targets.each { |sp| sp.flash( color, duration ) unless sp.disposed? }
+    @targets.each { |sp| sp.flash( color, duration ) unless sp.disposed?() }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :screen_rect
   #--------------------------------------------------------------------------#
-  def screen_rect
+  def screen_rect()
     @screen_rect ||= Rect.new( -32, -32, Graphics.width, Graphics.height )
     return @screen_rect
   end
@@ -6548,7 +6630,7 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * new-method :onScreen?
   #--------------------------------------------------------------------------#
-  def onScreen?
+  def onScreen?()
     r = self.screen_rect
     return self.screen_x.between?( r.x, r.width ) && self.screen_y.between?( r.y, r.height )
   end
@@ -6556,7 +6638,7 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * new-method :limitedOnScreen?
   #--------------------------------------------------------------------------#
-  def limitedOnScreen?
+  def limitedOnScreen?()
     return false unless screen_x.between?( 0, Graphics.width ) && screen_y.between?( 0, Graphics.height )
     return true
   end
@@ -6566,8 +6648,8 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   def play_anim( anim_id, targets=[] )
     set_targets( targets ) ; animation = $data_animations[anim_id]
-    raise "Animation #{anim_id} does not exist" if ::YGG.debug_mode? && animation.nil?
-    animation = RPG::Animation.new if animation.nil? if ::YGG.silent_error?
+    raise "Animation #{anim_id} does not exist" if ::YGG.debug_mode?() && animation.nil?()
+    animation = RPG::Animation.new if animation.nil?() if ::YGG.silent_error?()
     start_animation( animation )
   end
 
@@ -6583,14 +6665,14 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   # * new-method :set_targets
   #--------------------------------------------------------------------------#
   def set_targets( new_targets )
-    @targets.clear ; @targets += new_targets
+    @targets.clear() ; @targets += new_targets
     @targets = @targets.flatten.uniq.compact
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :load_animation_bitmap
   #--------------------------------------------------------------------------#
-  def load_animation_bitmap
+  def load_animation_bitmap()
     animation1_name    = @animation.animation1_name
     animation1_hue     = @animation.animation1_hue
     animation2_name    = @animation.animation2_name
@@ -6607,13 +6689,13 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
     else
       @@_reference_count[@animation_bitmap2] = 1
     end
-    Graphics.frame_reset
+    Graphics.frame_reset()
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :start_animation
   #--------------------------------------------------------------------------#
-  def start_animation( animation, mirror = false )
+  def start_animation(animation, mirror = false)
     dispose_animation
     @animation = animation
     return if @animation.nil?
@@ -6622,14 +6704,14 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
     load_animation_bitmap
     @animation_sprites = []
     @cell_count = [animation.cell_count, self.cell_limit].min
-    if @animation.position != 3 or not @@animations.include?( animation )
+    if @animation.position != 3 || !@@animations.include?(animation)
       for i in 0...@cell_count
-        sprite = ::Sprite.new( viewport )
+        sprite = ::Sprite.new(viewport)
         sprite.visible = false
-        @animation_sprites.push( sprite )
+        @animation_sprites.push(sprite)
       end
-      unless @@animations.include?( animation )
-        @@animations.push( animation )
+      unless @@animations.include?(animation)
+        @@animations.push(animation)
       end
     end
     update_animation_position
@@ -6639,12 +6721,12 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * new-method :dispose
   #--------------------------------------------------------------------------#
-  def dispose ; dispose_animation ; end
+  def dispose() ; dispose_animation() ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :dispose_animation
   #--------------------------------------------------------------------------#
-  def dispose_animation
+  def dispose_animation()
     if @animation_bitmap1 != nil
       @@_reference_count[@animation_bitmap1] -= 1
       if @@_reference_count[@animation_bitmap1] == 0
@@ -6654,10 +6736,10 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
     if @animation_bitmap2 != nil
       @@_reference_count[@animation_bitmap2] -= 1
       if @@_reference_count[@animation_bitmap2] == 0
-        @animation_bitmap2.dispose
+        @animation_bitmap2.dispose()
       end
     end
-    @animation_sprites.each { |sprite| sprite.dispose } unless @animation_sprites.nil?
+    @animation_sprites.each { |sprite| sprite.dispose } unless @animation_sprites.nil?()
     @animation_sprites = nil
     @animation = nil
     @animation_bitmap1 = nil
@@ -6667,17 +6749,17 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * new-method: update
   #--------------------------------------------------------------------------#
-  def update
-    update_animation if @animation != nil
+  def update()
+    update_animation() if @animation != nil
     @@animations.clear
   end
 
   #--------------------------------------------------------------------------#
   # * new-method: update_animation
   #--------------------------------------------------------------------------#
-  def update_animation
+  def update_animation()
     @animation_duration -= 1
-    update_animation_position if @animation_duration > 0
+    update_animation_position() if @animation_duration > 0
     return unless @animation_duration % RATE == 0
     if @animation_duration > 0
       frame_index = @animation.frame_max - ((@animation_duration+RATE-1)/RATE)
@@ -6689,7 +6771,7 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
       return
     end
     return start_animation( @animation ) if @looped_anim
-    dispose_animation
+    dispose_animation()
   end
 
   #--------------------------------------------------------------------------#
@@ -6699,13 +6781,13 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
     cell_data = frame.cell_data
     for i in 0...@cell_count
       sprite = @animation_sprites[i]
-      next if sprite.nil?
+      next if sprite.nil?()
       pattern = cell_data[i, 0]
       if pattern == nil or pattern == -1
         sprite.visible = false
         next
       end
-      unless self.onScreen?
+      unless self.onScreen?()
         sprite.visible = false
         next
       end
@@ -6742,12 +6824,12 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   # * new-method: animation_process_timing
   #--------------------------------------------------------------------------#
   def animation_process_timing( timing )
-    timing.se.play
+    timing.se.play()
     case timing.flash_scope
     when 1
       self.flash( timing.flash_color, timing.flash_duration * RATE )
     when 2
-      self.viewport.flash( timing.flash_color, timing.flash_duration * RATE ) unless self.viewport.nil?
+      self.viewport.flash( timing.flash_color, timing.flash_duration * RATE ) unless self.viewport.nil?()
     when 3
       self.flash( nil, timing.flash_duration * RATE )
     end
@@ -6756,14 +6838,14 @@ class YGG::Sprites::Animation < ::YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * new-method :update_animation_position
   #--------------------------------------------------------------------------#
-  def update_animation_position
-    unless self.onScreen?
+  def update_animation_position()
+    unless self.onScreen?()
       @animation_ox = -Graphics.width
       @animation_oy = -Graphics.height
       return
     end
     if @animation.position == 3
-      if self.viewport.nil?
+      if self.viewport.nil?()
         @animation_ox = Integer(Graphics.width) / 2
         @animation_oy = Integer(Graphics.height) / 2
       else
@@ -6821,18 +6903,18 @@ class YGG::Sprites::Pos < ::Sprite
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-  def update
+  def update()
     return if @completed
-    self.x = @pos_data.screen_x
-    self.y = @pos_data.screen_y
-    self.z = @pos_data.screen_z
+    self.x = @pos_data.screen_x()
+    self.y = @pos_data.screen_y()
+    self.z = @pos_data.screen_z()
     case @pos_data.fader_type
     when 0
       self.opacity -= 255 / @pos_data.fade_max
       @pos_data.fade_amount -= 1 unless @pos_data.fade_amount == 0
       @completed = true if @pos_data.fade_amount == 0
     end
-    super
+    super()
   end
 
 end
@@ -6861,20 +6943,20 @@ class YGG::Sprites::Icon < ::Sprite
     @ref_object = ref_object
     self.bitmap = Cache.system( "Iconset" )
     @icon_index = -1
-    update_bitmap
+    update_bitmap()
   end
 
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-  def update
-    super ; update_bitmap ; update_position
+  def update()
+    super() ; update_bitmap() ; update_position()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_position
   #--------------------------------------------------------------------------#
-  def update_position
+  def update_position()
     self.x = @ref_object.screen_x
     self.y = @ref_object.screen_y
     self.z = @ref_object.screen_z
@@ -6883,7 +6965,7 @@ class YGG::Sprites::Icon < ::Sprite
   #--------------------------------------------------------------------------#
   # * new-method :update_bitmap
   #--------------------------------------------------------------------------#
-  def update_bitmap
+  def update_bitmap()
     if @ref_object.icon_index != @icon_index
       @icon_index = @ref_object.icon_index
       self.src_rect.set(
@@ -6906,18 +6988,18 @@ class YGG::Sprites::EquipIcon < ::YGG::Sprites::Icon
   def initialize( viewport, character, eqhnd_id )
     @eqhnd_id = eqhnd_id
     @parent   = character
-    super( viewport, equip_handle )
+    super( viewport, equip_handle() )
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :equip_handle
   #--------------------------------------------------------------------------#
-  def equip_handle ; return @parent.character.equip_handle( @eqhnd_id ) ; end
+  def equip_handle() ; return @parent.character.equip_handle( @eqhnd_id ) ; end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :update_position
   #--------------------------------------------------------------------------#
-  def update_position
+  def update_position()
     self.ox, self.oy = @ref_object.sox, @ref_object.soy
     self.x = @parent.x + @ref_object.ox
     self.y = @parent.y + @ref_object.oy
@@ -6927,7 +7009,7 @@ class YGG::Sprites::EquipIcon < ::YGG::Sprites::Icon
   #--------------------------------------------------------------------------#
   # * new-method :update_angle
   #--------------------------------------------------------------------------#
-  def update_angle
+  def update_angle()
     self.angle  = @ref_object.angle
     self.mirror = @ref_object.mirror
   end
@@ -6935,7 +7017,7 @@ class YGG::Sprites::EquipIcon < ::YGG::Sprites::Icon
   #--------------------------------------------------------------------------#
   # * new-method :update_visible
   #--------------------------------------------------------------------------#
-  def update_visible
+  def update_visible()
     self.visible = @ref_object.visible
     self.opacity = @ref_object.opacity
   end
@@ -6943,11 +7025,11 @@ class YGG::Sprites::EquipIcon < ::YGG::Sprites::Icon
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-  def update
-    @ref_object = equip_handle
-    super
-    update_angle
-    update_visible
+  def update()
+    @ref_object = equip_handle()
+    super()
+    update_angle()
+    update_visible()
   end
 
 end
@@ -6978,13 +7060,13 @@ class YGG::Sprites::CharacterIcon < ::YGG::Sprites::Icon
   #--------------------------------------------------------------------------#
   # * new-method :ready_to_remove?
   #--------------------------------------------------------------------------#
-  def ready_to_remove? ; return @ready_to_remove ; end
+  def ready_to_remove?() ; return @ready_to_remove ; end
 
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-  def update
-    super
+  def update()
+    super()
     @self_timeout    = @ref_object.icon_time_out
     @ready_to_remove = true if @self_timeout == 0
     self.visible     = @ref_object.visible
@@ -7001,36 +7083,36 @@ class Sprite_Character < Sprite_Base
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_spc_initialize :initialize unless $@
+  alias :ygg_spc_initialize :initialize
   def initialize( *args, &block )
     ygg_spc_initialize( *args, &block )
-    create_equipment
+    create_equipment()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :dispose
   #--------------------------------------------------------------------------#
-  alias :ygg_spc_dispose :dispose unless $@
+  alias :ygg_spc_dispose :dispose
   def dispose( *args, &block )
     ygg_spc_dispose( *args, &block )
-    dispose_equipment
+    dispose_equipment()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_spc_update :update unless $@
+  alias :ygg_spc_update :update
   def update( *args, &block )
     ygg_spc_update( *args, &block )
-    unless @equipment.nil?
-      if @character.use_equipment && @equipment.empty? ; create_equipment
-      elsif !@character.use_equipment && !@equipment.empty? ; dispose_equipment
+    unless @equipment.nil?()
+      if @character.use_equipment && @equipment.empty?() ; create_equipment()
+      elsif !@character.use_equipment && !@equipment.empty?() ; dispose_equipment()
       end
-      update_equipment
+      update_equipment()
     end
     if $scene.is_a?( Scene_Map )
       @character.ygg_anims.each { |aid| $scene.push_ygg_anim( aid, @character.x, @character.y ) }
-      @character.ygg_anims.clear
+      @character.ygg_anims.clear()
     end
     self.tone = @character.tone
     self.zoom_x = @character.zoom_x
@@ -7040,7 +7122,7 @@ class Sprite_Character < Sprite_Base
   #--------------------------------------------------------------------------#
   # * new-method :create_equipment
   #--------------------------------------------------------------------------#
-  def create_equipment
+  def create_equipment()
     @equipment = []
     if @character.use_equipment
       @equipment[0] = YGG::Sprites::EquipIcon.new( self.viewport, self, 0 ) # Weap
@@ -7051,14 +7133,14 @@ class Sprite_Character < Sprite_Base
   #--------------------------------------------------------------------------#
   # * new-method :dispose_equipment
   #--------------------------------------------------------------------------#
-  def dispose_equipment
-    @equipment.each { |e| e.dispose } ; @equipment.clear
+  def dispose_equipment()
+    @equipment.each { |e| e.dispose() } ; @equipment.clear()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_equipment
   #--------------------------------------------------------------------------#
-  def update_equipment ; @equipment.each { |e| e.update } ; end
+  def update_equipment() ; @equipment.each { |e| e.update() } ; end
 
 end
 
@@ -7070,17 +7152,17 @@ class ::YGG::Sprites::Projectile < Sprite_Character
   #--------------------------------------------------------------------------#
   # * overwrite-method :create_bars
   #--------------------------------------------------------------------------#
-  def create_bars  ; end
+  def create_bars()  ; end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :dispose_bars
   #--------------------------------------------------------------------------#
-  def dispose_bars ; end
+  def dispose_bars() ; end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :update_bars
   #--------------------------------------------------------------------------#
-  def update_bars  ; end
+  def update_bars()  ; end
 
 end
 
@@ -7103,14 +7185,14 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_anim_ssm_initialize :initialize unless $@
+  alias :ygg_anim_ssm_initialize :initialize
   def initialize( *args, &block )
     ygg_anim_ssm_initialize( *args, &block )
     @disposed = false
-    create_projectiles
-    create_anims
-    create_ranges
-    create_drops
+    create_projectiles()
+    create_anims()
+    create_ranges()
+    create_drops()
   end
 
   #--------------------------------------------------------------------------#
@@ -7123,18 +7205,18 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * new-method :disposed?
   #--------------------------------------------------------------------------#
-  def disposed? ; return @disposed ; end
+  def disposed?() ; return @disposed ; end
 
   #--------------------------------------------------------------------------#
   # * alias-method :dispose
   #--------------------------------------------------------------------------#
-  alias :ygg_anim_ssm_dispose :dispose unless $@
+  alias :ygg_anim_ssm_dispose :dispose
   def dispose( *args, &block )
     ygg_anim_ssm_dispose( *args, &block )
-    @projectile_sprites.each { |spr| ; spr.dispose } unless @projectile_sprites.nil?
-    @ygg_anims.each { |anim| ; anim.dispose        } unless @ygg_anims.nil?
-    @range_sprites.each { |rng| ; rng.dispose      } unless @range_sprites.nil?
-    @drop_sprites.each { |dr| ; dr.dispose         } unless @drop_sprites.nil?
+    @projectile_sprites.each { |spr| ; spr.dispose() } unless @projectile_sprites.nil?()
+    @ygg_anims.each { |anim| ; anim.dispose()        } unless @ygg_anims.nil?()
+    @range_sprites.each { |rng| ; rng.dispose()      } unless @range_sprites.nil?()
+    @drop_sprites.each { |dr| ; dr.dispose()         } unless @drop_sprites.nil?()
     @projectile_sprites = nil ; @ygg_anims          = nil
     @range_sprites      = nil ; @drop_sprites       = nil
     @disposed = true
@@ -7143,7 +7225,7 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * new-method :create_drops
   #--------------------------------------------------------------------------#
-  def create_drops
+  def create_drops()
     drops = $game_map.active_drops
     @drop_sprites = drops.inject([]) { |result, char|
       spr = YGG::Sprites::CharacterIcon.new( @viewport1, char )
@@ -7155,7 +7237,7 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * new-method :create_ranges
   #--------------------------------------------------------------------------#
-  def create_ranges
+  def create_ranges()
     @range_sprites = $game_map.active_ranges.inject([]) { |result, range|
       result.push( YGG::Sprites::Pos.new( range, @viewport1 ) )
     }
@@ -7164,16 +7246,16 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * new-method :create_projectiles
   #--------------------------------------------------------------------------#
-  def create_projectiles
+  def create_projectiles()
     @projectile_sprites = []
-    $game_yggdrasil.new_projectiles.clear
+    $game_yggdrasil.new_projectiles.clear()
     $game_yggdrasil.projectiles.each { |pro| add_projectile_sprite( pro ) }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_anims
   #--------------------------------------------------------------------------#
-  def create_anims
+  def create_anims()
     @ygg_anims = []
     for i in 0...YGG::TOTAL_WILD_ANIMS
       anim = ::YGG::Sprites::Animation.new( @anim_viewport )
@@ -7186,7 +7268,7 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   def push_anim( anim_id, x, y, targets=[], looped=false )
     return if @disposed
-    for anim in @ygg_anims#.compact
+    for anim in @ygg_anims#.compact()
       unless anim.animation?
         anim.setup_pos( x, y, looped )
         anim.play_anim( anim_id,
@@ -7201,7 +7283,7 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   def add_projectile_sprite( projectile )
     return if @disposed
-    return nil if projectile.nil?
+    return nil if projectile.nil?()
     spr = ::YGG::Sprites::Projectile.new( @viewport1, projectile )
     @projectile_sprites.push( spr )
     return spr
@@ -7212,7 +7294,7 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   def add_range_sprite( range )
     return if @disposed
-    return nil if range.nil?
+    return nil if range.nil?()
     sprite = ::YGG::Sprites::Pos.new( range, @viewport1 )
     @range_sprites.push( sprite )
     return spr
@@ -7223,7 +7305,7 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   def add_drop_sprite( char )
     return if @disposed
-    return nil if char.nil?
+    return nil if char.nil?()
     spr = YGG::Sprites::CharacterIcon.new( @viewport1, char )
     spr.self_timeout = char.icon_time_out
     @drop_sprites.push( spr )
@@ -7233,7 +7315,7 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * alias-method :create_viewports
   #--------------------------------------------------------------------------#
-  alias :ygg_anim_ssm_create_viewports :create_viewports unless $@
+  alias :ygg_anim_ssm_create_viewports :create_viewports
   def create_viewports( *args, &block )
     ygg_anim_ssm_create_viewports( *args, &block )
     @anim_viewport = Viewport.new( 0, 0, Graphics.width, Graphics.height )
@@ -7243,76 +7325,76 @@ class Spriteset_Map
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_anim_ssm_update :update unless $@
+  alias :ygg_anim_ssm_update :update
   def update( *args, &block )
     return if @disposed
     ygg_anim_ssm_update( *args, &block )
-    update_anims       unless @ygg_anims.nil?
-    update_projectiles unless @projectile_sprites.nil?
-    update_ranges      unless @range_sprites.nil?
-    update_drops       unless @drop_sprites.nil?
+    update_anims()       unless @ygg_anims.nil?()
+    update_projectiles() unless @projectile_sprites.nil?()
+    update_ranges()      unless @range_sprites.nil?()
+    update_drops()       unless @drop_sprites.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_anims
   #--------------------------------------------------------------------------#
-  def update_anims
-    @ygg_anims.each { |anim| anim.update if anim.animation? }
+  def update_anims()
+    @ygg_anims.each { |anim| anim.update() if anim.animation?() }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_projectiles
   #--------------------------------------------------------------------------#
-  def update_projectiles
-    unless $game_yggdrasil.new_projectiles.empty?
+  def update_projectiles()
+    unless $game_yggdrasil.new_projectiles.empty?()
       $game_yggdrasil.new_projectiles.each { |pro| add_projectile_sprite( pro ) }
-      $game_yggdrasil.new_projectiles.clear
+      $game_yggdrasil.new_projectiles.clear()
     end
     @projectile_sprites = @projectile_sprites.inject([]) { |result, spr|
-      spr.update ; spr.dispose if spr.character.terminated?
-      result << spr unless spr.disposed? ; result
-    } unless @projectile_sprites.empty?
+      spr.update() ; spr.dispose() if spr.character.terminated?()
+      result << spr unless spr.disposed?() ; result
+    } unless @projectile_sprites.empty?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_ranges
   #--------------------------------------------------------------------------#
-  def update_ranges
+  def update_ranges()
     @range_sprites = @range_sprites.inject([]) { |result, rng|
-      ran.update
-      if ran.completed
-        $game_map.active_ranges.delete( ran.pos_data ) ; ran.dispose
-      else ; ran.update ; end
-      result << rng unless ran.disposed? ; result
-    } unless @range_sprites.empty?
+      ran.update()
+      if ran.completed()
+        $game_map.active_ranges.delete( ran.pos_data ) ; ran.dispose()
+      else ; ran.update() ; end
+      result << rng unless ran.disposed?() ; result
+    } unless @range_sprites.empty?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_drops
   #--------------------------------------------------------------------------#
-  def update_drops
+  def update_drops()
     @drop_sprites = @drop_sprites.inject([]) { |result, dr|
-      dr.ready_to_remove? ? dr.dispose : dr.update
-      result << dr unless dr.disposed? ; result
-    } unless @drop_sprites.empty?
+      dr.ready_to_remove?() ? dr.dispose() : dr.update()
+      result << dr unless dr.disposed?() ; result
+    } unless @drop_sprites.empty?()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update_viewports
   #--------------------------------------------------------------------------#
-  alias :ygg_anim_ssm_update_viewports :update_viewports unless $@
+  alias :ygg_anim_ssm_update_viewports :update_viewports
   def update_viewports( *args, &block )
     ygg_anim_ssm_update_viewports( *args, &block )
-    @anim_viewport.update unless @anim_viewport.nil?
+    @anim_viewport.update() unless @anim_viewport.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :dispose_viewports
   #--------------------------------------------------------------------------#
-  alias :ygg_anim_ssm_dispose_viewports :dispose_viewports unless $@
+  alias :ygg_anim_ssm_dispose_viewports :dispose_viewports
   def dispose_viewports( *args, &block )
     ygg_anim_ssm_dispose_viewports( *args, &block )
-    @anim_viewport.dispose unless @anim_viewport.nil? ; @anim_viewport = nil
+    @anim_viewport.dispose() unless @anim_viewport.nil?() ; @anim_viewport = nil
   end
 
 end
@@ -7337,7 +7419,7 @@ class Game_System
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_gs_initialize :initialize unless $@
+  alias :ygg_gs_initialize :initialize
   def initialize( *args, &block )
     ygg_gs_initialize( *args, &block )
     @ygg_hit_count      = 0
@@ -7349,12 +7431,12 @@ class Game_System
   #--------------------------------------------------------------------------#
   # * new-method :gameover_alldead?
   #--------------------------------------------------------------------------#
-  def gameover_alldead? ; return @gameover_alldead end
+  def gameover_alldead?() ; return @gameover_alldead end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_gs_update :update unless $@
+  alias :ygg_gs_update :update
   def update( *args, &block )
     ygg_gs_update( *args, &block )
     unless $game_message.visible
@@ -7374,7 +7456,7 @@ class Game_System
   #--------------------------------------------------------------------------#
   # * new-method :yggdrasil_on?
   #--------------------------------------------------------------------------#
-  def yggdrasil_on? ; return $game_yggdrasil.on? ; end
+  def yggdrasil_on?() ; return $game_yggdrasil.on?() ; end
 
 end
 
@@ -7398,7 +7480,7 @@ class Game_Battler
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_initialize :initialize unless $@
+  alias :ygg_gb_initialize :initialize
   def initialize( *args, &block )
     ygg_gb_initialize( *args, &block )
     @state_ticks      = {}
@@ -7409,9 +7491,9 @@ class Game_Battler
     @skill_handles  , @item_handles   = {}, {}
     @ygg_guard = false
     @cooldown, @cooldown_max, = 0, 300
-    clear_stat_cache
-    clear_item_slots
-    clear_skill_slots
+    clear_stat_cache()
+    clear_item_slots()
+    clear_skill_slots()
   end
 
   #--------------------------------------------------------------------------#
@@ -7419,23 +7501,23 @@ class Game_Battler
   #--------------------------------------------------------------------------#
   def skill_can_use?( skill )
     return false unless skill.is_a?( RPG::Skill )
-    return false unless movable?
-    return false if silent? and skill.spi_f > 0
+    return false unless movable?()
+    return false if silent?() and skill.spi_f > 0
     return false if calc_mp_cost( skill ) > mp
     if $game_temp.in_battle
-      return skill.battle_ok?
-    elsif $game_system.yggdrasil_on? and $scene.is_a?( Scene_Map )
-      return skill.battle_ok?
+      return skill.battle_ok?()
+    elsif $game_system.yggdrasil_on?() and $scene.is_a?( Scene_Map )
+      return skill.battle_ok?()
     else
-      return skill.menu_ok?
+      return skill.menu_ok?()
     end
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :guarding?
   #--------------------------------------------------------------------------#
-  def guarding?
-    return @action.guard? || @ygg_guard
+  def guarding?()
+    return @action.guard?() || @ygg_guard
   end
 
   #--------------------------------------------------------------------------#
@@ -7475,13 +7557,13 @@ class Game_Battler
   #--------------------------------------------------------------------------#
   [:maxhp, :maxmp, :atk, :def, :spi, :agi].each { |m|
     module_eval( %Q(
-    alias :ygg_gb_#{m.to_s} #{m} unless $@
+    alias :ygg_gb_#{m.to_s} #{m}
     def #{m.to_s}( *args, &block )
       @cached_#{m.to_s} ||= ygg_gb_#{m.to_s}( *args, &block )
       return @cached_#{m.to_s}
     end
 
-    alias :ygg_gb_#{m.to_s}_set #{m}= unless $@
+    alias :ygg_gb_#{m.to_s}_set #{m}=
     def #{m.to_s}=( new_value )
       @cached_#{m.to_s} = nil if new_value != @cached_#{m.to_s}
       ygg_gb_#{m.to_s}_set( new_value )
@@ -7492,7 +7574,7 @@ class Game_Battler
   #--------------------------------------------------------------------------#
   # * new-method :clear_stat_cache
   #--------------------------------------------------------------------------#
-  def clear_stat_cache
+  def clear_stat_cache()
     @cached_maxhp = nil
     @cached_maxmp = nil
     @cached_atk   = nil
@@ -7514,9 +7596,9 @@ class Game_Battler
   #--------------------------------------------------------------------------#
   # * alias-method :recover_all
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_recover_all :recover_all unless $@
+  alias :ygg_gb_recover_all :recover_all
   def recover_all( *args, &block )
-    clear_stat_cache
+    clear_stat_cache()
     ygg_gb_recover_all( *args, &block )
   end
 
@@ -7525,19 +7607,19 @@ if ::YGG::FULL_INTEGRATION
   #--------------------------------------------------------------------------#
   # * alias-method :add_state
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_fi_add_state :add_state unless $@
+  alias :ygg_gb_fi_add_state :add_state
   def add_state( state_id )
     sti = state_ignore?( state_id )
     ygg_gb_fi_add_state( state_id )
     state = $data_states[state_id]
-    return if state.nil? ; return if sti
+    return if state.nil?() ; return if sti
     @state_ticks[state_id] = state.hold_ticks unless state.id == 1
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :remove_state
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_fi_remove_state :remove_state unless $@
+  alias :ygg_gb_fi_remove_state :remove_state
   def remove_state( state_id )
     ygg_gb_fi_remove_state( state_id )
     @state_ticks.delete( state_id )
@@ -7546,10 +7628,10 @@ if ::YGG::FULL_INTEGRATION
   #--------------------------------------------------------------------------#
   # * alias-method :update_state_ticks
   #--------------------------------------------------------------------------#
-  def update_state_ticks
+  def update_state_ticks()
     @state_ticks.keys.clone.each { |key|
       state = $data_states[key]
-      if state.nil? ; @state_ticks.delete(key) ; next ; end
+      if state.nil?() ; @state_ticks.delete(key) ; next ; end
       @state_ticks[key] -= 1
       remove_state( key ) if @state_ticks[key] < 0 && rand(100) < state.auto_release_prob
     }
@@ -7558,15 +7640,15 @@ if ::YGG::FULL_INTEGRATION
   #--------------------------------------------------------------------------#
   # * overwrite-method :slip_damage?
   #--------------------------------------------------------------------------#
-  def slip_damage?
-    @cached_slip ||= self.states.any? { |s| s.slip_damage }
+  def slip_damage?()
+    @cached_slip ||= self.states.any?() { |s| s.slip_damage }
     return @cached_slip
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :slip_damage_effect
   #--------------------------------------------------------------------------#
-  def slip_damage_effect
+  def slip_damage_effect()
     self.hp -= 1 if slip_damage? and @hp > 0
   end
 
@@ -7603,27 +7685,27 @@ end # // Full Integration
   #--------------------------------------------------------------------------#
   # * alias-method :add_state
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_add_state :add_state unless $@
+  alias :ygg_gb_add_state :add_state
   def add_state( *args, &block )
     old_states = self.states
     ygg_gb_add_state( *args, &block )
-    clear_stat_cache unless self.states == old_states
+    clear_stat_cache() unless self.states == old_states
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :remove_state
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_remove_state :remove_state unless $@
+  alias :ygg_gb_remove_state :remove_state
   def remove_state( *args, &block )
     old_states = self.states
     ygg_gb_remove_state( *args, &block )
-    clear_stat_cache unless self.states == old_states
+    clear_stat_cache() unless self.states == old_states
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :move_mod
   #--------------------------------------------------------------------------#
-  def move_mod
+  def move_mod()
     @cached_move ||= self.states.inject(0) { |r, s| r+s.move_mod }
     return @cached_move
   end
@@ -7631,8 +7713,8 @@ end # // Full Integration
   #--------------------------------------------------------------------------#
   # * new-method :effect_tone
   #--------------------------------------------------------------------------#
-  def effect_tone
-    if @cached_tone.nil?
+  def effect_tone()
+    if @cached_tone.nil?()
       @cached_tone = ::Tone.new( 0, 0, 0, 0 )
       self.states.each { |s|
         if s.tone_effect ; @cached_tone = s.effect_tone ; break ; end }
@@ -7643,8 +7725,8 @@ end # // Full Integration
   #--------------------------------------------------------------------------#
   # * new-method :slip_frequency
   #--------------------------------------------------------------------------#
-  def slip_frequency
-    if @cached_slip_freq.nil?
+  def slip_frequency()
+    if @cached_slip_freq.nil?()
       r = 1 ; count = 1
       self.states.each { |s|
         if s.slip_freq != 0
@@ -7661,17 +7743,17 @@ end # // Full Integration
   #--------------------------------------------------------------------------#
 if ::YGG::FULL_INTEGRATION
 
-  def update_states
-    update_state_ticks
-    update_slip_damage  if (Graphics.frame_count % slip_frequency) == 0
+  def update_states()
+    update_state_ticks()
+    update_slip_damage()  if (Graphics.frame_count % slip_frequency) == 0
   end
 
 else
 
-  def update_states
+  def update_states()
     @ygg_slip_counter = [@ygg_slip_counter-1, 0].max
     if @ygg_slip_counter == 0
-      remove_states_auto ; update_slip_damage
+      remove_states_auto() ; update_slip_damage()
       @ygg_slip_counter = YGG::STATE_TURN_COUNTER
     end
   end
@@ -7681,9 +7763,9 @@ end
   #--------------------------------------------------------------------------#
   # * new-method :update_slip_damage
   #--------------------------------------------------------------------------#
-  def update_slip_damage
-    if slip_damage?
-      slip_damage_effect ; self.ygg_engage.engage( 30 )
+  def update_slip_damage()
+    if slip_damage?()
+      slip_damage_effect() ; self.ygg_engage.engage( 30 )
     end
   end
 
@@ -7712,7 +7794,7 @@ end
   #--------------------------------------------------------------------------#
   # * new-method :skill_slots
   #--------------------------------------------------------------------------#
-  def skill_slot_skills
+  def skill_slot_skills()
     result = []
     @skill_slot_size.times { |i| result << skill_slot( i ) } ; return result
   end
@@ -7728,7 +7810,7 @@ end
   #--------------------------------------------------------------------------#
   # * new-method :item_slot_items
   #--------------------------------------------------------------------------#
-  def item_slot_items
+  def item_slot_items()
     result = []
     @item_slot_size.times { |i| result << item_slot( i ) } ; return result
   end
@@ -7752,14 +7834,14 @@ end
   #--------------------------------------------------------------------------#
   # * new-method :clear_skill_slots
   #--------------------------------------------------------------------------#
-  def clear_skill_slots
+  def clear_skill_slots()
     @skill_slot_size.times { |i| set_skill_slot( i, 0 ) }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :clear_item_slots
   #--------------------------------------------------------------------------#
-  def clear_item_slots
+  def clear_item_slots()
     @item_slot_size.times { |i| set_item_slot( i, 0 ) }
   end
 
@@ -7782,8 +7864,8 @@ end
   #--------------------------------------------------------------------------#
   # * new-method :update_obj_handles
   #--------------------------------------------------------------------------#
-  def update_obj_handles
-    (@skill_slots+@item_slots).each { |hnd| hnd.update }
+  def update_obj_handles()
+    (@skill_slots+@item_slots).each { |hnd| hnd.update() }
   end
 
   #--------------------------------------------------------------------------#
@@ -7801,32 +7883,32 @@ end
   #--------------------------------------------------------------------------#
   # * new-method :cooldown_max
   #--------------------------------------------------------------------------#
-  def cooldown_max ; @cooldown_max ; end
+  def cooldown_max() ; @cooldown_max ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :cap_cooldown
   #--------------------------------------------------------------------------#
-  def cap_cooldown
+  def cap_cooldown()
     @cooldown = @cooldown_max
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_cooldown
   #--------------------------------------------------------------------------#
-  def update_cooldown
+  def update_cooldown()
     @cooldown = [@cooldown - 1, 0].max
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :cooling_down?
   #--------------------------------------------------------------------------#
-  def cooling_down? ; return @cooldown > 0 ; end
+  def cooling_down?() ; return @cooldown > 0 ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_can_attack?
   #--------------------------------------------------------------------------#
-  def ygg_can_attack? ;
-    return false if cooling_down?
+  def ygg_can_attack?() ;
+    return false if cooling_down?()
     return true
   end
 
@@ -7834,18 +7916,18 @@ end
   # * new-method :ygg_skill_can_use?
   #--------------------------------------------------------------------------#
   def ygg_skill_can_use?( obj )
-    return false if cooling_down?
+    return false if cooling_down?()
     return false unless skill_can_use?( obj )
-    return get_skill_handle( obj.id ).can_use?
+    return get_skill_handle( obj.id ).can_use?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_item_can_use?
   #--------------------------------------------------------------------------#
   def ygg_item_can_use?( obj )
-    return false if cooling_down?
+    return false if cooling_down?()
     return false unless item_can_use?( obj )
-    return get_item_handle( obj.id ).can_use?
+    return get_item_handle( obj.id ).can_use?()
   end
 
   #--------------------------------------------------------------------------#
@@ -7879,45 +7961,45 @@ class Game_Actor < Game_Battler
   #--------------------------------------------------------------------------#
   # * alias-method :level_up
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_level_up :level_up unless $@
+  alias :ygg_gb_level_up :level_up
   def level_up( *args, &block )
-    clear_stat_cache
+    clear_stat_cache()
     ygg_gb_level_up( *args, &block )
-    clear_stat_cache
+    clear_stat_cache()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :level_down
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_level_down :level_down unless $@
+  alias :ygg_gb_level_down :level_down
   def level_down( *args, &block )
-    clear_stat_cache
+    clear_stat_cache()
     ygg_gb_level_down( *args, &block )
-    clear_stat_cache
+    clear_stat_cache()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :change_equip
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_change_equip :change_equip unless $@
+  alias :ygg_gb_change_equip :change_equip
   def change_equip( *args, &block )
-    clear_stat_cache
+    clear_stat_cache()
     ygg_gb_change_equip( *args, &block )
-    clear_stat_cache
+    clear_stat_cache()
   end
 
   #--------------------------------------------------------------------------#
   # * ygg_target_range
   #--------------------------------------------------------------------------#
-  def ygg_target_range
+  def ygg_target_range()
     eq = weapons[0]
-    eq.nil? ? 0 : eq.ygg_target_range
+    eq.nil?() ? 0 : eq.ygg_target_range
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :drops_attraction?
   #--------------------------------------------------------------------------#
-  def drops_attraction? ; equips.compact.any? { |eq| eq.drops_attraction? } ; end
+  def drops_attraction?() ; equips.compact.any? { |eq| eq.drops_attraction?() } ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :equip_icon
@@ -7925,10 +8007,10 @@ class Game_Actor < Game_Battler
   def equip_icon( eq_id )
     if self.two_swords_style
       weps = weapons
-      return weps[eq_id].nil? ? 0 : weps[eq_id].icon_index
+      return weps[eq_id].nil?() ? 0 : weps[eq_id].icon_index
     else
       weps = [weapons[0], armors[0]]
-      return weps[eq_id].nil? ? 0 : weps[eq_id].icon_index
+      return weps[eq_id].nil?() ? 0 : weps[eq_id].icon_index
     end
   end
 
@@ -7941,7 +8023,7 @@ class Game_Actor < Game_Battler
     else
       weps = [weapons[0], armors[0]]
     end
-    return weps[eq_id].nil? ? "" : weps[eq_id].atk_act_name
+    return weps[eq_id].nil?() ? "" : weps[eq_id].atk_act_name
   end
 
   #--------------------------------------------------------------------------#
@@ -7953,13 +8035,13 @@ class Game_Actor < Game_Battler
     else
       weps = [weapons[0], armors[0]]
     end
-    return weps[eq_id].nil? ? "" : weps[eq_id].grd_act_name
+    return weps[eq_id].nil?() ? "" : weps[eq_id].grd_act_name
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :change_exp
   #--------------------------------------------------------------------------#
-  alias :ygg_gb_change_exp :change_exp unless $@
+  alias :ygg_gb_change_exp :change_exp
   def change_exp( *args, &block )
     ygg_gb_change_exp( *args, &block )
     @cached_level_exp = nil
@@ -7969,7 +8051,7 @@ class Game_Actor < Game_Battler
   #--------------------------------------------------------------------------#
   # * new-method :level_exp
   #--------------------------------------------------------------------------#
-  def level_exp
+  def level_exp()
     @cached_level_exp ||= @exp - @exp_list[@level]
     return @cached_level_exp
   end
@@ -7977,7 +8059,7 @@ class Game_Actor < Game_Battler
   #--------------------------------------------------------------------------#
   # * new-method :next_level_exp
   #--------------------------------------------------------------------------#
-  def next_level_exp
+  def next_level_exp()
     @cached_next_level_exp ||= @exp_list[@level+1] - @exp_list[@level]
     return @cached_next_level_exp
   end
@@ -7992,7 +8074,7 @@ class Game_Enemy < Game_Battler
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_gmen_initialize :initialize unless $@
+  alias :ygg_gmen_initialize :initialize
   def initialize( *args, &block )
     ygg_gmen_initialize( *args, &block )
     @skill_slot_size = 0
@@ -8003,10 +8085,36 @@ class Game_Enemy < Game_Battler
   end
 
   #--------------------------------------------------------------------------#
+  # * overwrite-method :use_equipment
+  #--------------------------------------------------------------------------#
+  def use_equipment() ; return enemy.use_equipment ; end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :equip_icon
+  #--------------------------------------------------------------------------#
+  def equip_icon( eq_id )
+    return enemy.equip_icons[eq_id]
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :equip_atk_act_name
+  #--------------------------------------------------------------------------#
+  def equip_atk_act_name( eq_id )
+    return enemy.atk_act_name
+  end
+
+  #--------------------------------------------------------------------------#
+  # * new-method :equip_grd_act_name
+  #--------------------------------------------------------------------------#
+  def equip_grd_act_name( eq_id )
+    return enemy.grd_act_name
+  end
+
+  #--------------------------------------------------------------------------#
   # * new-method :calc_gold
   #--------------------------------------------------------------------------#
-  def calc_gold
-    return YGG::Random.variation( gold, enemy.gold_variation )
+  def calc_gold()
+    return Integer( YGG::Random.variation( gold, enemy.gold_variation ) )
   end
 
   #--------------------------------------------------------------------------#
@@ -8024,7 +8132,7 @@ class Game_Enemy < Game_Battler
   #--------------------------------------------------------------------------#
   # * new-method :all_drops
   #--------------------------------------------------------------------------#
-  def all_drops
+  def all_drops()
     dro = []
     for di in self.enemy.drop_items.compact
       next if di.kind == 0 ; next if rand(di.denominator) != 0
@@ -8060,9 +8168,9 @@ class Game_Party
   #--------------------------------------------------------------------------#
   # * alias-method :on_player_walk
   #--------------------------------------------------------------------------#
-  alias :ygg1x6_gmpt_on_player_walk :on_player_walk unless $@
+  alias :ygg1x6_gmpt_on_player_walk :on_player_walk
   def on_player_walk( *args, &block )
-    unless $game_system.yggdrasil_on?
+    unless $game_system.yggdrasil_on?()
       ygg1x6_gmpt_on_player_walk( *args, &block )
     end
   end
@@ -8070,8 +8178,8 @@ class Game_Party
   #--------------------------------------------------------------------------#
   # * new-method :ygg_slip_damage
   #--------------------------------------------------------------------------#
-  def ygg_slip_damage
-    ($game_party.members-[$game_player.ygg_battler]).each { |m| m.update_states }
+  def ygg_slip_damage()
+    ($game_party.members-[$game_player.ygg_battler]).each { |m| m.update_states() }
   end
 
 end
@@ -8091,7 +8199,7 @@ class Game_Map
   #--------------------------------------------------------------------------#
   # * alias-method :events_xy
   #--------------------------------------------------------------------------#
-  alias :ygg_gmm_events_xy :events_xy unless $@
+  alias :ygg_gmm_events_xy :events_xy
   def events_xy( x, y )
     return ygg_gmm_events_xy( x, y ) + $game_yggdrasil.roam_xy( x, y )
   end
@@ -8099,26 +8207,26 @@ class Game_Map
   #--------------------------------------------------------------------------#
   # * alias-method :setup
   #--------------------------------------------------------------------------#
-  alias :ygg_gmm_setup :setup unless $@
+  alias :ygg_gmm_setup :setup
   def setup( *args, &block )
-    $game_player.ygg_unregister
+    $game_player.ygg_unregister()
     ygg_gmm_setup( *args, &block )
-    ygg_setup
-    $game_player.ygg_register
+    ygg_setup()
+    $game_player.ygg_register()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_setup
   #--------------------------------------------------------------------------#
-  def ygg_setup
+  def ygg_setup()
     $game_yggdrasil.setup_map( self.map_id )
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :setup_itemmap
   #--------------------------------------------------------------------------#
-  def setup_itemmap
-    $game_yggdrasil.setup_itemmap
+  def setup_itemmap()
+    $game_yggdrasil.setup_itemmap()
   end
 
   #--------------------------------------------------------------------------#
@@ -8138,31 +8246,31 @@ class Game_Map
   #--------------------------------------------------------------------------#
   # * new-method :items_map
   #--------------------------------------------------------------------------#
-  def items_map ; return $items_map ; end
+  def items_map() ; return $items_map ; end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  #alias :ygg_gm_update :update unless $@
+  #alias :ygg_gm_update :update
   #def update( *args, &block )
   #  ygg_gm_update( *args, &block )
-  #  update_drops
+  #  update_drops()
   #end
 
   #--------------------------------------------------------------------------#
   # * new-method :active_drops
   #--------------------------------------------------------------------------#
-  def active_drops ; return $game_yggdrasil.active_drops ; end
+  def active_drops() ; return $game_yggdrasil.active_drops ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :active_ranges
   #--------------------------------------------------------------------------#
-  def active_ranges ; return $game_yggdrasil.active_ranges ; end
+  def active_ranges() ; return $game_yggdrasil.active_ranges ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :projectiles
   #--------------------------------------------------------------------------#
-  def projectiles ; return $game_yggdrasil.projectiles ; end
+  def projectiles() ; return $game_yggdrasil.projectiles ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :drops_xy
@@ -8181,7 +8289,7 @@ class Game_Event < Game_Character
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_ge_initialize :initialize unless $@
+  alias :ygg_ge_initialize :initialize
   def initialize( *args, &block )
     ygg_ge_initialize( *args, &block )
     @ai_operated        = true
@@ -8190,51 +8298,50 @@ class Game_Event < Game_Character
   #--------------------------------------------------------------------------#
   # * alias-method :erase
   #--------------------------------------------------------------------------#
-  alias :ygg_gme_erase :erase unless $@
+  alias :ygg_gme_erase :erase
   def erase( *args, &block )
-    terminate_ai_engine
-    ygg_unregister ; ygg_gme_erase( *args, &block )
+    terminate_ai_engine()
+    ygg_unregister() ; ygg_gme_erase( *args, &block )
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :setup
   #--------------------------------------------------------------------------#
-  alias :ygg_gme_setup :setup unless $@
+  alias :ygg_gme_setup :setup
   def setup( *args, &block )
     @dont_scan_events = YGG::DONT_SCAN_EVENTS
     @ygg_cache_complete = false
     ygg_gme_setup( *args, &block )
-    ygg_event_cache
+    ygg_event_cache()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :pop_enabled?
   #--------------------------------------------------------------------------#
-  def pop_enabled?
+  def pop_enabled?()
     return @ygg_pop_enabled
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_event_cache
   #--------------------------------------------------------------------------#
-  def ygg_event_cache
-    ygg_event_cache_start
-    return if @list.nil?
+  def ygg_event_cache()
+    ygg_event_cache_start()
     for i in 0..@list.size
-      next if @list[i].nil?
+      next if @list[i].nil?()
       if [108, 408].include?( @list[i].code )
         @list[i].parameters.to_s.split(/[\r\n]+/).each { |line|
           ygg_event_cache_check( line )
         }
       end
-    end
-    ygg_event_cache_end
+    end unless @list.nil?()
+    ygg_event_cache_end()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_event_cache_start
   #--------------------------------------------------------------------------#
-  def ygg_event_cache_start
+  def ygg_event_cache_start()
     @ygg_cache_complete     = false
     @ygg_battler            = nil
     @ygg_ally               = false
@@ -8278,10 +8385,10 @@ class Game_Event < Game_Character
     when YGG::REGEXP::EVENT::INSTANT_DEATH
       @ygg_instant_death = true
     when YGG::REGEXP::EVENT::ABS_ALLY
-      next if $game_actors[$1.to_i].nil?
+      return if $game_actors[$1.to_i].nil?()
       setup_ygg_battler( $game_actors[$1.to_i], :actor )
     when YGG::REGEXP::EVENT::ABS_ENEMY
-      next if $data_enemies[$1.to_i].nil?
+      return if $data_enemies[$1.to_i].nil?()
       setup_ygg_battler( Game_Enemy.new(0, $1.to_i), :enemy )
     when YGG::REGEXP::EVENT::ABS_SET_AS_ALLY
       @ygg_enemy = !@ygg_ally = true
@@ -8327,11 +8434,11 @@ class Game_Event < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_event_cache_end
   #--------------------------------------------------------------------------#
-  def ygg_event_cache_end
-    setup_ai_engine( @__aiengine, @__aieng_setup_data ) unless @__aiengine.nil?
+  def ygg_event_cache_end()
+    setup_ai_engine( @__aiengine, @__aieng_setup_data ) unless @__aiengine.nil?()
     @__read_aiengine, @__aiengine, @__aieng_setup_data = 0, nil, {}
     @ygg_cache_complete = true
-    #setup_target_group
+    #setup_target_group()
   end
 
   #--------------------------------------------------------------------------#
@@ -8348,19 +8455,19 @@ class Game_Event < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :terminate_ygg_battler
   #--------------------------------------------------------------------------#
-  def terminate_ygg_battler
+  def terminate_ygg_battler()
     @ygg_battler = nil
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_attacker
   #--------------------------------------------------------------------------#
-  def ygg_attacker ; @ygg_battler || super ; end
+  def ygg_attacker() ; @ygg_battler || super ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_ally?
   #--------------------------------------------------------------------------#
-  def ygg_ally? ; return @ygg_ally ; end
+  def ygg_ally?() ; return @ygg_ally ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :Is an enemy?
@@ -8375,9 +8482,9 @@ class Game_Event < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_death
   #--------------------------------------------------------------------------#
-  def ygg_death
-    ygg_enemy? ? Sound.play_enemy_collapse : Sound.play_actor_collapse
-    create_drops
+  def ygg_death()
+    ygg_enemy?() ? Sound.play_enemy_collapse() : Sound.play_actor_collapse()
+    create_drops()
     @ygg_battler = nil
     @ygg_boss    = false
     @ygg_dieing  = true
@@ -8386,28 +8493,28 @@ class Game_Event < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :create_drops
   #--------------------------------------------------------------------------#
-  def create_drops
-    $game_map.create_drops( self.x, self.y, ygg_battler.create_drops_object )
+  def create_drops()
+    $game_map.create_drops( self.x, self.y, ygg_battler.create_drops_object() )
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_gme_update :update unless $@
-  def update
-    ygg_gme_update
-    ygg_abs_update if $game_system.yggdrasil_on?
+  alias :ygg_gme_update :update
+  def update()
+    ygg_gme_update()
+    ygg_abs_update() if $game_system.yggdrasil_on?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_abs_update
   #--------------------------------------------------------------------------#
-  def ygg_abs_update
-    super
-    unless self.ygg_battler.nil?
-      update_battler
-      if ygg_attacker.dead? ; ygg_death
-      else                  ; ygg_update_ai
+  def ygg_abs_update()
+    super()
+    unless self.ygg_battler.nil?()
+      update_battler()
+      if ygg_attacker.dead? ; ygg_death()
+      else                  ; ygg_update_ai()
       end
     end
     if @ygg_dieing
@@ -8420,7 +8527,7 @@ class Game_Event < Game_Character
       end
       if @die_count_down <= 0
         @ygg_dieing = false
-        ygg_perform_death
+        ygg_perform_death()
       end
     end
   end
@@ -8433,21 +8540,21 @@ class Game_Event < Game_Character
   # Therefore the event is removed.
   #--------------------------------------------------------------------------#
   if $imported["IRME_Event_Generator"]
-    def ygg_perform_death
-      ygg_death_operations
+    def ygg_perform_death()
+      ygg_death_operations()
       if @ygg_dead_self_switches.empty? and @ygg_dead_switches.empty? # If no switches are present do normal erasing
-        unless @generator_id.nil?
-          self.irme_die
+        unless @generator_id.nil?()
+          self.irme_die()
         else
           self.erase
         end
       end
     end
   else
-    def ygg_perform_death
-      ygg_death_operations
+    def ygg_perform_death()
+      ygg_death_operations()
       if @ygg_dead_self_switches.empty? and @ygg_dead_switches.empty? # If no switches are present do normal erasing
-        self.erase
+        self.erase()
       end
     end
   end
@@ -8455,9 +8562,9 @@ class Game_Event < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_death_operations
   #--------------------------------------------------------------------------#
-  def ygg_death_operations
+  def ygg_death_operations()
     @ygg_anims.push(@ygg_death_anim) if @ygg_death_anim > 0
-    if !@ygg_dead_self_switches.empty? or !@ygg_dead_switches.empty?
+    if !@ygg_dead_self_switches.empty?() or !@ygg_dead_switches.empty?()
       @ygg_dead_self_switches.compact.each { |selswit|
         $game_system.control_self_switch( $game_map.map_id, @id, selswit, true )
       }
@@ -8491,7 +8598,7 @@ class Game_Player < Game_Character
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_gmp_initialize :initialize unless $@
+  alias :ygg_gmp_initialize :initialize
   def initialize( *args, &block )
     ygg_gmp_initialize( *args, &block )
     @ygg_targeting_mode = false
@@ -8504,12 +8611,12 @@ class Game_Player < Game_Character
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_gmp_update :update unless $@
+  alias :ygg_gmp_update :update
   def update( *args, &block )
-    abs_on = $game_system.yggdrasil_on?
+    abs_on = $game_system.yggdrasil_on?()
     if abs_on
-      ygg_abs_update
-      ygg_update_pickup
+      ygg_abs_update()
+      ygg_update_pickup()
     end
     ygg_gmp_update( *args, &block )
     if abs_on
@@ -8520,19 +8627,19 @@ class Game_Player < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_update_pickup
   #--------------------------------------------------------------------------#
-  def ygg_update_pickup
+  def ygg_update_pickup()
     $game_map.drops_xy( self.x, self.y ).compact.each { |dr|
-      self.ygg_gain_drop( dr.drop ) ; dr.drop_remove }
+      self.ygg_gain_drop( dr.drop ) ; dr.drop_remove() }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :gain_drop
   #--------------------------------------------------------------------------#
   def ygg_gain_drop( drop )
-    return if drop.nil?
-    drop.pickup_sfx.play unless drop.pickup_sfx.nil?
+    return if drop.nil?()
+    drop.pickup_sfx.play() unless drop.pickup_sfx.nil?()
     @ygg_gained_items << drop
-    @ygg_gained_items.shift while @ygg_gained_items.size > 20 # // remove really old drops to save memory
+    @ygg_gained_items.shift() while @ygg_gained_items.size > 20 # // remove really old drops to save memory
     if drop.is_a?( YGG::Containers::GoldItem )
       $game_party.gain_gold( drop.gold_amount )
     else
@@ -8543,17 +8650,17 @@ class Game_Player < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_abs_update
   #--------------------------------------------------------------------------#
-  def ygg_abs_update
-    super
-    unless self.ygg_battler.nil?
-      update_battler ; ygg_attack_input
+  def ygg_abs_update()
+    super()
+    unless self.ygg_battler.nil?()
+      update_battler() ; ygg_attack_input()
     end
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_attacker
   #--------------------------------------------------------------------------#
-  def ygg_attacker ; return $game_party.members[0] ; end
+  def ygg_attacker() ; return $game_party.members[0] ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :ygg_ally?, ygg_enemy?, ygg_wild?, ygg_boss?
@@ -8566,7 +8673,7 @@ class Game_Player < Game_Character
   #--------------------------------------------------------------------------#
   # * new-method :ygg_can_move?
   #--------------------------------------------------------------------------#
-  def ygg_can_move? ; super ; end
+  def ygg_can_move?() ; super() ; end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :use_equipment
@@ -8610,11 +8717,11 @@ class YGG::Drop_Character < YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
+  def update()
     @icon_time_out   = [@icon_time_out-1, 0].max
     @ready_to_remove = true if @icon_time_out <= 0
     @opacity -= 255 / 60 if @icon_time_out <= @icon_fade_thres
-    if $game_player.drop_attraction?
+    if $game_player.drop_attraction?()
       if $game_player.x > self.x    ; self.x = [self.x-0.1, $game_player.x].min
       elsif $game_player.x < self.x ; self.x = [self.x-0.1, $game_player.x].max
       end
@@ -8628,7 +8735,7 @@ class YGG::Drop_Character < YGG::Handlers::Screen
   #--------------------------------------------------------------------------#
   # * super-method :drop_remove
   #--------------------------------------------------------------------------#
-  def drop_remove
+  def drop_remove()
     @drop_object = nil
     @icon_index = 0
     @icon_time_out = 0
@@ -8654,25 +8761,25 @@ class Scene_Title < Scene_Base
   #--------------------------------------------------------------------------#
   # * alias-method :load_database
   #--------------------------------------------------------------------------#
-  alias :ygg_sct_load_database :load_database unless $@
-  def load_database
-    ygg_sct_load_database
-    load_ygg_database
+  alias :ygg_sct_load_database :load_database
+  def load_database()
+    ygg_sct_load_database()
+    load_ygg_database()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :load_bt_database
   #--------------------------------------------------------------------------#
-  alias :ygg_sct_load_bt_database :load_bt_database unless $@
-  def load_bt_database
-    ygg_sct_load_bt_database
-    load_ygg_database
+  alias :ygg_sct_load_bt_database :load_bt_database
+  def load_bt_database()
+    ygg_sct_load_bt_database()
+    load_ygg_database()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :load_ygg_database
   #--------------------------------------------------------------------------#
-  def load_ygg_database
+  def load_ygg_database()
     data = []
     data += $data_items
     data += $data_skills
@@ -8680,16 +8787,16 @@ class Scene_Title < Scene_Base
     data += $data_weapons
     data += $data_armors
     data += $data_states
-    data.compact.each { |obj| obj.yggdrasil_1x6_cache }
+    data.compact.each { |obj| obj.yggdrasil_1x6_cache() }
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :create_game_objects
   #--------------------------------------------------------------------------#
-  alias :ygg_sct_ptxt_create_game_objects :create_game_objects unless $@
-  def create_game_objects
-    $game_yggdrasil = YGG::System.new
-    ygg_sct_ptxt_create_game_objects
+  alias :ygg_sct_ptxt_create_game_objects :create_game_objects
+  def create_game_objects()
+    $game_yggdrasil = YGG::System.new()
+    ygg_sct_ptxt_create_game_objects()
   end
 
 end
@@ -8708,18 +8815,18 @@ class Scene_Map < Scene_Base
   # * new-method :push_ygg_anim
   #--------------------------------------------------------------------------#
   def push_ygg_anim( anim_id, x, y, targets=[], looped = false )
-    @spriteset.push_anim( anim_id, x, y, targets, looped ) unless @spriteset.nil?
+    @spriteset.push_anim( anim_id, x, y, targets, looped ) unless @spriteset.nil?()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_scm_update :update unless $@
+  alias :ygg_scm_update :update
   def update( *args, &block )
     ygg_scm_update( *args, &block )
-    $game_yggdrasil.update
-    $game_party.ygg_slip_damage if $game_yggdrasil.on?
-    $game_yggdrasil.gameover_process if $game_party.all_dead? if $game_system.gameover_alldead?
+    $game_yggdrasil.update()
+    $game_party.ygg_slip_damage() if $game_yggdrasil.on?()
+    $game_yggdrasil.gameover_process() if $game_party.all_dead?() if $game_system.gameover_alldead?()
   end
 
 if ::YGG::USE_DROPS_WINDOW
@@ -8727,39 +8834,39 @@ if ::YGG::USE_DROPS_WINDOW
   #--------------------------------------------------------------------------#
   # * alias-method :start
   #--------------------------------------------------------------------------#
-  alias :ygg_drop_win_start :start unless $@
+  alias :ygg_drop_win_start :start
   def start( *args, &block )
     ygg_drop_win_start( *args, &block )
-    create_drops_window
+    create_drops_window()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_drops_window
   #--------------------------------------------------------------------------#
-  def create_drops_window
+  def create_drops_window()
     size = YGG::DROPS_WINDOW_SIZE
     @drops_logging = YGG::Drops_Window.new(
       { :x => size[0], :y => size[1], :z => size[2], :width => size[3] }, nil )
-    @drops_logging.visible = $game_yggdrasil.drops_window_visible?
+    @drops_logging.visible = $game_yggdrasil.drops_window_visible?()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :terminate
   #--------------------------------------------------------------------------#
-  alias :ygg_drop_win_terminate :terminate unless $@
+  alias :ygg_drop_win_terminate :terminate
   def terminate( *args, &block )
-    @drops_logging.dispose unless @drops_logging.nil? ; @drops_logging = nil
+    @drops_logging.dispose() unless @drops_logging.nil?() ; @drops_logging = nil
     ygg_drop_win_terminate( *args, &block )
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_drop_win_update :update unless $@
+  alias :ygg_drop_win_update :update
   def update( *args, &block )
-    unless @drops_logging.nil?
-      @drops_logging.visible = $game_yggdrasil.drops_window_visible?
-      @drops_logging.update
+    unless @drops_logging.nil?()
+      @drops_logging.visible = $game_yggdrasil.drops_window_visible?()
+      @drops_logging.update()
     end
     ygg_drop_win_update( *args, &block )
   end
@@ -8796,7 +8903,7 @@ class YGG::Handlers::Shift
   #--------------------------------------------------------------------------#
   # * new-method :initialize
   #--------------------------------------------------------------------------#
-  def initialize
+  def initialize()
     @shift_time = 0
     @shift_cap  = Graphics.frame_rate*5
   end
@@ -8804,22 +8911,22 @@ class YGG::Handlers::Shift
   #--------------------------------------------------------------------------#
   # * new-method :reset_shift_time
   #--------------------------------------------------------------------------#
-  def reset_shift_time ; @shift_time = @shift_cap ; end
+  def reset_shift_time() ; @shift_time = @shift_cap ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :time
   #--------------------------------------------------------------------------#
-  def time ; return @shift_time ; end
+  def time() ; return @shift_time ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :cap
   #--------------------------------------------------------------------------#
-  def cap ; return @shift_cap ; end
+  def cap() ; return @shift_cap ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :can_shift?
   #--------------------------------------------------------------------------#
-  def can_shift? ; return @shift_time == 0 ; end
+  def can_shift?() ; return @shift_time == 0 ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :swap_actors
@@ -8842,24 +8949,24 @@ class YGG::Handlers::Shift
   def perform_shift( n )
     rotate_actors( n ) ;
     $game_player.ygg_anims << 81
-    $game_player.thrust_backward
-    $game_player.refresh
-    reset_shift_time
+    $game_player.thrust_backward()
+    $game_player.refresh()
+    reset_shift_time()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
+  def update()
     @shift_time = [@shift_time - 1, 0].max
-    update_shift if can_shift?
-    perform_shift( 1 ) while $game_party.members[0].dead? unless $game_party.all_dead?
+    update_shift() if can_shift?
+    perform_shift( 1 ) while $game_party.members[0].dead?() unless $game_party.all_dead?()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update_shift
   #--------------------------------------------------------------------------#
-  def update_shift
+  def update_shift()
     if Input.trigger?( Input::R )
       perform_shift( 1 )
     elsif Input.trigger?( Input::L )
@@ -8882,19 +8989,19 @@ class YGG::System
   #--------------------------------------------------------------------------#
   # * alias-method :initialize
   #--------------------------------------------------------------------------#
-  alias :ygg_shift_sys_initialize :initialize unless $@
+  alias :ygg_shift_sys_initialize :initialize
   def initialize( *args, &block )
     ygg_shift_sys_initialize( *args, &block )
-    @shift_system = ::YGG::Handlers::Shift.new
+    @shift_system = ::YGG::Handlers::Shift.new()
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_shift_sys_update :update unless $@
+  alias :ygg_shift_sys_update :update
   def update( *args, &block )
     ygg_shift_sys_update( *args, &block )
-    @shift_system.update
+    @shift_system.update()
   end
 
 end
@@ -8924,7 +9031,7 @@ class YGG::Windows::Level_Up < ::Sprite
     @background.bitmap.fill_rect( BORDER_SIZE, BORDER_SIZE,
       width-(BORDER_SIZE*2), WLH-(BORDER_SIZE*2),
       Color.new( 0, 0, 0 ) )
-    @background.bitmap.blur ; @background.bitmap.blur
+    @background.bitmap.blur() ; @background.bitmap.blur()
     @background.opacity = 198
     self.bitmap = Bitmap.new( width, WLH*7 )
     self.src_rect.set( 0, 0, width, WLH )
@@ -8936,12 +9043,12 @@ class YGG::Windows::Level_Up < ::Sprite
   #--------------------------------------------------------------------------#
   # * super-method :dispose
   #--------------------------------------------------------------------------#
-  def dispose
-    unless @background.nil?
-      @background.bitmap.dispose ; @background.dispose
+  def dispose()
+    unless @background.nil?()
+      @background.bitmap.dispose() ; @background.dispose()
     end
-    self.bitmap.dispose
-    super
+    self.bitmap.dispose()
+    super()
   end
 
   #--------------------------------------------------------------------------#
@@ -8988,7 +9095,7 @@ class YGG::Windows::Level_Up < ::Sprite
   # * super-method :show_level_up
   #--------------------------------------------------------------------------#
   def show_level_up( battler, old_level )
-    self.bitmap.clear
+    self.bitmap.clear()
     @count = 0 ; @index = 0 ; @last_index = -1
     stats = [:maxhp, :maxmp, :atk, :def, :spi, :agi]
     self.bitmap.font.size = 16
@@ -9006,8 +9113,8 @@ class YGG::Windows::Level_Up < ::Sprite
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-  def update
-    super
+  def update()
+    super()
     return if @index >= 8
     @count += 1
     @index += 1 if @count % 60 == 0
@@ -9042,7 +9149,7 @@ class Scene_Map < Scene_Base
   #--------------------------------------------------------------------------#
   # * alias-method :start
   #--------------------------------------------------------------------------#
-  alias :ygg_lvl_up_win_scm_start :start unless $@
+  alias :ygg_lvl_up_win_scm_start :start
   def start( *args, &block )
     ygg_lvl_up_win_scm_start( *args, &block )
     @level_up_window = YGG::Windows::Level_Up.new( 0, 0, 128 )
@@ -9051,19 +9158,19 @@ class Scene_Map < Scene_Base
   #--------------------------------------------------------------------------#
   # * alias-method :terminate
   #--------------------------------------------------------------------------#
-  alias :ygg_lvl_up_win_scm_terminate :terminate unless $@
+  alias :ygg_lvl_up_win_scm_terminate :terminate
   def terminate( *args, &block )
     ygg_lvl_up_win_scm_terminate( *args, &block )
-    @level_up_window.dispose unless @level_up_window.nil? ; @level_up_window = nil
+    @level_up_window.dispose() unless @level_up_window.nil?() ; @level_up_window = nil
   end
 
   #--------------------------------------------------------------------------#
   # * alias-method :update
   #--------------------------------------------------------------------------#
-  alias :ygg_lvl_up_win_scm_update :update unless $@
+  alias :ygg_lvl_up_win_scm_update :update
   def update( *args, &block )
     ygg_lvl_up_win_scm_update( *args, &block )
-    @level_up_window.update unless @level_up_window.nil?
+    @level_up_window.update() unless @level_up_window.nil?()
   end
 
 end
@@ -9078,7 +9185,7 @@ class Scene_File < Scene_Base
   #--------------------------------------------------------------------------#
   # * alias-method :write_save_data
   #--------------------------------------------------------------------------#
-  alias :ygg_scnf_ptxt_write_save_data :write_save_data unless $@
+  alias :ygg_scnf_ptxt_write_save_data :write_save_data
   def write_save_data( file )
     ygg_scnf_ptxt_write_save_data( file )
     Marshal.dump( $game_yggdrasil,      file )
@@ -9087,10 +9194,11 @@ class Scene_File < Scene_Base
   #--------------------------------------------------------------------------#
   # * alias-method :read_save_data
   #--------------------------------------------------------------------------#
-  alias :ygg_scnf_ptxt_read_save_data :read_save_data unless $@
+  alias :ygg_scnf_ptxt_read_save_data :read_save_data
   def read_save_data( file )
     ygg_scnf_ptxt_read_save_data( file )
     $game_yggdrasil = Marshal.load( file )
+    $game_yggdrasil.__on_load()
   end
 
 end
@@ -9110,14 +9218,14 @@ class ::YGG::Windows::ActorObjSlots < ::Window_Selectable
     @column_max = 1
     self.active = false
     self.index  = 0
-    refresh
+    refresh()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :enabled?
   #--------------------------------------------------------------------------#
   def enabled?( index )
-    return !@data[index].nil?
+    return !@data[index].nil?()
   end
 
   #--------------------------------------------------------------------------#
@@ -9128,18 +9236,18 @@ class ::YGG::Windows::ActorObjSlots < ::Window_Selectable
   #--------------------------------------------------------------------------#
   # * new-method :get_objs
   #--------------------------------------------------------------------------#
-  def get_objs
+  def get_objs()
     return []
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :refresh
   #--------------------------------------------------------------------------#
-  def refresh
-    @data     = get_objs
+  def refresh()
+    @data     = get_objs()
     @item_max = @data.size
     @data_enabled = []
-    create_contents
+    create_contents()
     for i in 0...@item_max
       @data_enabled[i] = enabled?( i )
       draw_item( i )
@@ -9149,12 +9257,12 @@ class ::YGG::Windows::ActorObjSlots < ::Window_Selectable
   #--------------------------------------------------------------------------#
   # * new-method :selective_refresh
   #--------------------------------------------------------------------------#
-  def selective_refresh
-    newdata   = get_objs
+  def selective_refresh()
+    newdata   = get_objs()
     @item_max = newdata.size
     if @data.size != @item_max
-      @data.clear
-      create_contents
+      @data.clear()
+      create_contents()
     end
     for i in 0...newdata.size
       if newdata[i] != @data[i] || @data_enabled[i] != enabled?( i )
@@ -9175,7 +9283,7 @@ class ::YGG::Windows::ActorObjSlots < ::Window_Selectable
     self.contents.clear_rect( rect )
     self.contents.font.color = normal_color
     self.contents.font.color.alpha -= 128 unless enabled
-    unless obj.nil?
+    unless obj.nil?()
       draw_item_name( obj, rect.x, rect.y, enabled )
     else
       draw_icon( 98, rect.x, rect.y )
@@ -9187,12 +9295,12 @@ class ::YGG::Windows::ActorObjSlots < ::Window_Selectable
   #--------------------------------------------------------------------------#
   # * kill-method :cursor_pagedown
   #--------------------------------------------------------------------------#
-  def cursor_pagedown ; end
+  def cursor_pagedown() ; end
 
   #--------------------------------------------------------------------------#
   # * kill-method :cursor_pageup
   #--------------------------------------------------------------------------#
-  def cursor_pageup ; end
+  def cursor_pageup() ; end
 
 end
 
@@ -9204,29 +9312,29 @@ class ::YGG::Windows::ItemList < ::YGG::Windows::ActorObjSlots
   #--------------------------------------------------------------------------#
   # * new-method :item
   #--------------------------------------------------------------------------#
-  def item ; return obj ; end
+  def item() ; return obj() ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :enabled?
   #--------------------------------------------------------------------------#
   def enabled?( index )
     return false if @actor.item_slot_items.include?( @data[index] )
-    return false if @data[index].cant_equip_slot unless @data[index].nil?
+    return false if @data[index].cant_equip_slot unless @data[index].nil?()
     return super( index )
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :get_objs
   #--------------------------------------------------------------------------#
-  def get_objs
+  def get_objs()
     return [nil] + ($game_party.items.inject([]) { |r, i| r << i if i.is_a?(RPG::Item) }) + [nil]
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :update_help
   #--------------------------------------------------------------------------#
-  def update_help
-    @help_window.set_text(item.nil? ? "" : item.description)
+  def update_help()
+    @help_window.set_text(item.nil?() ? "" : item.description)
   end
 
 end
@@ -9239,22 +9347,22 @@ class ::YGG::Windows::SkillList < ::YGG::Windows::ActorObjSlots
   #--------------------------------------------------------------------------#
   # * new-method :skill
   #--------------------------------------------------------------------------#
-  def skill ; return obj ; end
+  def skill() ; return obj() ; end
 
   #--------------------------------------------------------------------------#
   # * super-method :enabled?
   #--------------------------------------------------------------------------#
   def enabled?( index )
     return false if @actor.skill_slot_skills.include?( @data[index] )
-    return false if @data[index].cant_equip_slot unless @data[index].nil?
+    return false if @data[index].cant_equip_slot unless @data[index].nil?()
     return super( index )
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :get_objs
   #--------------------------------------------------------------------------#
-  def get_objs
-    return [nil] + @actor.skills + [nil]
+  def get_objs()
+    return [nil] + @actor.skills() + [nil]
   end
 
   #--------------------------------------------------------------------------#
@@ -9263,44 +9371,44 @@ class ::YGG::Windows::SkillList < ::YGG::Windows::ActorObjSlots
   def update_help
     @help_window.set_text(skill.nil? ? "" : skill.description)
   end
-
 end
 
 #==============================================================================#
 # ** YGG::Windows::ActorItemSlots
 #==============================================================================#
 class ::YGG::Windows::ActorItemSlots < ::YGG::Windows::ActorObjSlots
-
   #--------------------------------------------------------------------------#
   # * new-method :item
   #--------------------------------------------------------------------------#
-  def item ; return obj ; end
+  def item
+    obj
+  end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :get_objs
   #--------------------------------------------------------------------------#
   def get_objs
-    return @actor.item_slot_items
+    @actor.item_slot_items
   end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :update_help
   #--------------------------------------------------------------------------#
   def update_help
-    @help_window.set_text(item.nil? ? "" : item.description)
+    @help_window.set_text(item ? item.description : "")
   end
-
 end
 
 #==============================================================================#
 # ** YGG::Windows::ActorSkillSlots
 #==============================================================================#
 class ::YGG::Windows::ActorSkillSlots < ::YGG::Windows::ActorObjSlots
-
   #--------------------------------------------------------------------------#
   # * new-method :skill
   #--------------------------------------------------------------------------#
-  def skill ; return obj ; end
+  def skill
+    obj
+  end
 
   #--------------------------------------------------------------------------#
   # * overwrite-method :get_objs
@@ -9313,9 +9421,8 @@ class ::YGG::Windows::ActorSkillSlots < ::YGG::Windows::ActorObjSlots
   # * overwrite-method :update_help
   #--------------------------------------------------------------------------#
   def update_help
-    @help_window.set_text(skill.nil? ? "" : skill.description)
+    @help_window.set_text(skill ? skill.description : "")
   end
-
 end
 
 # // Is there a good reason why I haven't super classes these? YES
@@ -9323,18 +9430,17 @@ end
 # ** YGG::Scenes::ObjSet
 #==============================================================================#
 class ::YGG::Scenes::ObjSet < ::Scene_Base
-
   #--------------------------------------------------------------------------#
   # * super-method :initialize
   #--------------------------------------------------------------------------#
   def initialize( actor, called=:map, return_index=0 )
-    super
+    super()
     # ---------------------------------------------------- #
     @actor = nil
     @act_index = 0
     @index_call = false
     # ---------------------------------------------------- #
-    if actor.kind_of?( Game_Battler )
+    if actor.kind_of?(Game_Battler)
       @actor = actor
     elsif actor != nil
       @actor = $game_party.members[actor]
@@ -9370,10 +9476,14 @@ class ::YGG::Scenes::ObjSet < ::Scene_Base
   def terminate
     super
     dispose_menu_background
-    @help_window.dispose unless @help_window.nil?     ; @help_window = nil
-    @obj_window.dispose unless @obj_window.nil?       ; @obj_window = nil
-    @slot_window.dispose unless @slot_window.nil?     ; @slot_window = nil
-    @status_window.dispose unless @status_window.nil? ; @status_window = nil
+    @help_window.dispose unless @help_window.nil?
+    @help_window = nil
+    @obj_window.dispose unless @obj_window.nil?
+    @obj_window = nil
+    @slot_window.dispose unless @slot_window.nil?
+    @slot_window = nil
+    @status_window.dispose unless @status_window.nil?
+    @status_window = nil
   end
 
   #--------------------------------------------------------------------------#
@@ -9382,22 +9492,23 @@ class ::YGG::Scenes::ObjSet < ::Scene_Base
   def update
     super
     update_menu_background
-    @obj_window.update ; @slot_window.update
+    @obj_window.update
+    @slot_window.update
     # // Basic Update
-    if Input.trigger?( Input::B )
+    if Input.trigger?(Input::B)
       command_cancel
-    elsif Input.trigger?( Input::R ) && @index_call
+    elsif Input.trigger?(Input::R) && @index_call
       command_next
-    elsif Input.trigger?( Input::L ) && @index_call
+    elsif Input.trigger?(Input::L) && @index_call
       command_prev
     # // Actual Input
-    elsif Input.trigger?( Input::C )
+    elsif Input.trigger?(Input::C)
       command_accept
-    elsif Input.trigger?( Input::Z )
+    elsif Input.trigger?(Input::Z)
       # // Used to pop extended help window, if I ever implement it
-    elsif Input.trigger?( Input::X ) || Input.trigger?( Input::LEFT )
+    elsif Input.trigger?(Input::X) || Input.trigger?(Input::LEFT)
       command_prevslot
-    elsif Input.trigger?( Input::Y ) || Input.trigger?( Input::RIGHT )
+    elsif Input.trigger?(Input::Y) || Input.trigger?(Input::RIGHT)
       command_nextslot
     end
   end
@@ -9449,14 +9560,12 @@ class ::YGG::Scenes::ObjSet < ::Scene_Base
   #--------------------------------------------------------------------------#
   def command_accept
   end
-
 end
 
 #==============================================================================#
 # ** YGG::Scenes::ItemSet
 #==============================================================================#
 class ::YGG::Scenes::ItemSet < ::YGG::Scenes::ObjSet
-
   #--------------------------------------------------------------------------#
   # * super-method :start
   #--------------------------------------------------------------------------#
@@ -9464,16 +9573,16 @@ class ::YGG::Scenes::ItemSet < ::YGG::Scenes::ObjSet
     super
     create_menu_background
     @help_window   = ::Window_Help.new
-    @status_window = ::Window_SkillStatus.new( 0, 56, @actor )
+    @status_window = ::Window_SkillStatus.new(0, 56, @actor)
     @obj_window   = ::YGG::Windows::ItemList.new(
       @actor,
-      Graphics.width/2, 112,
-      Graphics.width/2, Graphics.height-112 )
+      Graphics.width / 2, 112,
+      Graphics.width / 2, Graphics.height - 112)
     @obj_window.help_window = @help_window
     @slot_window   = ::YGG::Windows::ActorItemSlots.new(
       @actor,
       0, 112,
-      Graphics.width/2, Graphics.height-112 )
+      Graphics.width / 2, Graphics.height - 112)
     @obj_window.active = true
   end
 
@@ -9481,9 +9590,9 @@ class ::YGG::Scenes::ItemSet < ::YGG::Scenes::ObjSet
   # * new-method :command_accept
   #--------------------------------------------------------------------------#
   def command_accept
-    if @obj_window.enabled?( @obj_window.index ) || @obj_window.obj.nil?
+    if @obj_window.enabled?(@obj_window.index) || @obj_window.obj.nil?
       Sound.play_decision
-      id = @obj_window.item.nil? ? 0 : @obj_window.item.id
+      id = @obj_window.item ? @obj_window.item.id@obj_window.item.id : 0
       @actor.set_item_slot( @slot_window.index, id )
       @obj_window.selective_refresh #.draw_item( @obj_window.index )
       @slot_window.refresh
@@ -9491,7 +9600,6 @@ class ::YGG::Scenes::ItemSet < ::YGG::Scenes::ObjSet
       Sound.play_buzzer
     end
   end
-
 end
 
 # // Scene_ItemSet.new( actor, called_from, [return_index)]
@@ -9506,9 +9614,9 @@ class ::YGG::Scenes::SkillSet < ::YGG::Scenes::ObjSet
   # * super-method :start
   #--------------------------------------------------------------------------#
   def start
-    super
-    create_menu_background
-    @help_window   = ::Window_Help.new
+    super()
+    create_menu_background()
+    @help_window   = ::Window_Help.new()
     @status_window = ::Window_SkillStatus.new( 0, 56, @actor )
     @obj_window    = ::YGG::Windows::SkillList.new(
       @actor,
@@ -9525,15 +9633,15 @@ class ::YGG::Scenes::SkillSet < ::YGG::Scenes::ObjSet
   #--------------------------------------------------------------------------#
   # * new-method :command_accept
   #--------------------------------------------------------------------------#
-  def command_accept
-    if @obj_window.enabled?( @obj_window.index ) || @obj_window.obj.nil?
+  def command_accept()
+    if @obj_window.enabled?( @obj_window.index ) || @obj_window.obj.nil?()
       Sound.play_decision
-      id = @obj_window.skill.nil? ? 0 : @obj_window.skill.id
+      id = @obj_window.skill.nil?() ? 0 : @obj_window.skill.id
       @actor.set_skill_slot( @slot_window.index, id )
-      @obj_window.selective_refresh #draw_item( @obj_window.index )
-      @slot_window.refresh
+      @obj_window.selective_refresh() #draw_item( @obj_window.index )
+      @slot_window.refresh()
     else
-      Sound.play_buzzer
+      Sound.play_buzzer()
     end
   end
 
@@ -9578,24 +9686,24 @@ class YGG::Handlers::HudWrapper
   #--------------------------------------------------------------------------#
   # * new-method :initialize
   #--------------------------------------------------------------------------#
-  def initialize
+  def initialize()
     @values = {}
     @actor  = nil
     @need_refresh = false
-    load_defaults
+    load_defaults()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :load_defaults
   #--------------------------------------------------------------------------#
-  def refresh
+  def refresh()
     @need_refresh = false
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :load_defaults
   #--------------------------------------------------------------------------#
-  def load_defaults
+  def load_defaults()
     DEFAULTS.each_pair { |key, value| @values[key] = value }
   end
 
@@ -9603,17 +9711,17 @@ class YGG::Handlers::HudWrapper
   # * new-method :actor=
   #--------------------------------------------------------------------------#
   def actor=( new_actor )
-    if new_actor != @actor ; @actor = new_actor ; update ; end
+    if new_actor != @actor ; @actor = new_actor ; update() ; end
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
+  def update()
     if @actor != $game_player.ygg_battler
       @actor = $game_player.ygg_battler ; @need_refresh = true
     end
-    if @actor.nil?
+    if @actor.nil?()
       @values[:hp]        = DEFAULTS[:hp]
       @values[:maxhp]     = DEFAULTS[:maxhp]
       @values[:mp]        = DEFAULTS[:mp]
@@ -9632,7 +9740,7 @@ class YGG::Handlers::HudWrapper
       @values[:exp]       = @actor.level_exp
       @values[:maxexp]    = @actor.next_level_exp
     end
-    if shift_valid?
+    if shift_valid?()
       @values[:shift]     = $game_yggdrasil.shift_system.time
       @values[:maxshift]  = $game_yggdrasil.shift_system.cap
     else
@@ -9644,7 +9752,7 @@ class YGG::Handlers::HudWrapper
   #--------------------------------------------------------------------------#
   # * new-method :shift_valid?
   #--------------------------------------------------------------------------#
-  def shift_valid?
+  def shift_valid?()
     return ::YGG::USE_SHIFT_SYSTEM
   end
 
@@ -9655,19 +9763,19 @@ class YGG::Handlers::HudWrapper
     return POSITIONS[args[0]].call( *args.slice( 1, args.size ) )
   end
 
-if ::YGG::HUD_SWITCH.nil? || ::YGG::HUD_SWITCH == 0
+if ::YGG::HUD_SWITCH.nil?() || ::YGG::HUD_SWITCH == 0
 
   #--------------------------------------------------------------------------#
   # * new-method :hud_visible?
   #--------------------------------------------------------------------------#
-  def visible? ; return true ; end
+  def visible?() ; return true ; end
 
 else
 
   #--------------------------------------------------------------------------#
   # * new-method :hud_visible?
   #--------------------------------------------------------------------------#
-  def visible?
+  def visible?()
     return $game_switches[::YGG::HUD_SWITCH]
   end
 
@@ -9756,7 +9864,7 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * overwrite-method :update
   #--------------------------------------------------------------------------#
-    def update
+    def update()
       case @active_effect
       when "fadeout"
         self.opacity -= 255 / 30.0
@@ -9793,9 +9901,9 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * super-method :update
   #--------------------------------------------------------------------------#
-    def update
-      super
-      self.src_rect.width = self.bitmap.width * @value / [@max, 1].max unless self.bitmap.nil?
+    def update()
+      super()
+      self.src_rect.width = self.bitmap.width * @value / [@max, 1].max unless self.bitmap.nil?()
     end
 
   end
@@ -9848,18 +9956,18 @@ class ::YGG::Handlers::Hud
     @visible = true
     @disposed = false
     @x, @y, @z = x, y, z
-    create_all
-    refresh
+    create_all()
+    refresh()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_all
   #--------------------------------------------------------------------------#
-  def create_all
+  def create_all()
     @skill_setsize = 5#@actor.skill_slot_size
     @item_setsize  = 5#@actor.item_slot_size
-    create_skills
-    create_items
+    create_skills()
+    create_items()
     @back_sprite = Sprite_Back.new( self.viewport )
     @back_sprite.bitmap = Cache.system( "1x6Hud2" )
     @hp_sprite   = Sprite_ValueBar.new( self.viewport )
@@ -9882,13 +9990,13 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * new-method :disposed?
   #--------------------------------------------------------------------------#
-  def disposed? ; return @disposed ; end
+  def disposed?() ; return @disposed ; end
 
   #--------------------------------------------------------------------------#
   # * new-method :dispose
   #--------------------------------------------------------------------------#
-  def dispose
-    each_sprite { |s| s.dispose }
+  def dispose()
+    each_sprite { |s| s.dispose() }
     @back_sprite = nil ; @hp_sprite = nil ; @mp_sprite = nil
     @skills = nil ; @items = nil
     @disposed = true
@@ -9897,18 +10005,18 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * new-method :refresh
   #--------------------------------------------------------------------------#
-  def refresh
+  def refresh()
     @portrait_sprite.refresh(
-      @__hud_wrapper.actor.nil? ? "" : @__hud_wrapper.actor.character_name,
-      @__hud_wrapper.actor.nil? ?  0 : @__hud_wrapper.actor.character_index )
-    refresh_add_xyz
-    refresh_xyz
+      @__hud_wrapper.actor.nil?() ? "" : @__hud_wrapper.actor.character_name,
+      @__hud_wrapper.actor.nil?() ?  0 : @__hud_wrapper.actor.character_index )
+    refresh_add_xyz()
+    refresh_xyz()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :create_skills
   #--------------------------------------------------------------------------#
-  def create_skills
+  def create_skills()
     @skills = Array.new( @skill_setsize ).map! { Sprite_Icon.new( self.viewport ) }
     for i in 0...@skills.size
       @skills[i].bush_opacity = 48
@@ -9918,7 +10026,7 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * new-method :create_items
   #--------------------------------------------------------------------------#
-  def create_items
+  def create_items()
     @items = Array.new( @item_setsize ).map! { Sprite_Icon.new( self.viewport ) }
     for i in 0...@items.size
       @items[i].bush_opacity = 48
@@ -9928,36 +10036,36 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * new-method :each_sprite
   #--------------------------------------------------------------------------#
-  def each_sprite
-    (@sprites+@skills.to_a+@items.to_a).each { |s| yield s unless s.nil? }
+  def each_sprite()
+    (@sprites+@skills.to_a+@items.to_a).each { |s| yield s unless s.nil?() }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :x=
   #--------------------------------------------------------------------------#
   def x=( new_x )
-    @x = new_x ; refresh_x
+    @x = new_x ; refresh_x()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :visible=
   #--------------------------------------------------------------------------#
   def visible=( new_visible )
-    @visible = new_visible ; refresh_visible
+    @visible = new_visible ; refresh_visible()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :y=
   #--------------------------------------------------------------------------#
   def y=( new_y )
-    @y = new_y ; refresh_y
+    @y = new_y ; refresh_y()
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :z=
   #--------------------------------------------------------------------------#
   def z=( new_z )
-    @z = new_z ; refresh_z
+    @z = new_z ; refresh_z()
   end
 
   #--------------------------------------------------------------------------#
@@ -9971,28 +10079,28 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * new-method :refresh_x
   #--------------------------------------------------------------------------#
-  def refresh_x
+  def refresh_x()
     each_sprite { |s| s.x = @x + s.add_x }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :refresh_y
   #--------------------------------------------------------------------------#
-  def refresh_y
+  def refresh_y()
     each_sprite { |s| s.y = @y + s.add_y }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :refresh_z
   #--------------------------------------------------------------------------#
-  def refresh_z
+  def refresh_z()
     each_sprite { |s| s.z = @z + s.add_z }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :refresh_add_xyz
   #--------------------------------------------------------------------------#
-  def refresh_add_xyz
+  def refresh_add_xyz()
     @back_sprite.set_add_xyz(     *@__hud_wrapper.get_obj_xyz( :back ) )
     @hp_sprite.set_add_xyz(       *@__hud_wrapper.get_obj_xyz( :hp_bar ) )
     @mp_sprite.set_add_xyz(       *@__hud_wrapper.get_obj_xyz( :mp_bar ) )
@@ -10011,42 +10119,42 @@ class ::YGG::Handlers::Hud
   #--------------------------------------------------------------------------#
   # * new-method :refresh_xyz
   #--------------------------------------------------------------------------#
-  def refresh_xyz
+  def refresh_xyz()
     each_sprite { |s| s.x, s.y, s.z = @x + s.add_x, @y + s.add_y, @z + s.add_z }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :refresh_visible
   #--------------------------------------------------------------------------#
-  def refresh_visible
+  def refresh_visible()
     each_sprite { |s| s.visible = @visible }
   end
 
   #--------------------------------------------------------------------------#
   # * new-method :update
   #--------------------------------------------------------------------------#
-  def update
+  def update()
     if @__hud_wrapper.need_refresh
-      @__hud_wrapper.refresh ; refresh
+      @__hud_wrapper.refresh() ; refresh()
     end
     @hp_sprite.value, @hp_sprite.max = @__hud_wrapper.hp, @__hud_wrapper.maxhp
     @mp_sprite.value, @mp_sprite.max = @__hud_wrapper.mp, @__hud_wrapper.maxmp
     @exp_sprite.value, @exp_sprite.max = @__hud_wrapper.exp, @__hud_wrapper.maxexp
     @shift_sprite.value, @shift_sprite.max = @__hud_wrapper.shift, @__hud_wrapper.maxshift
     @charge_sprite.value, @charge_sprite.max = @__hud_wrapper.charge, @__hud_wrapper.maxcharge
-    @hp_sprite.update
-    @mp_sprite.update
-    @exp_sprite.update
-    @shift_sprite.update
-    @charge_sprite.update
-    unless @__hud_wrapper.actor.nil?
+    @hp_sprite.update()
+    @mp_sprite.update()
+    @exp_sprite.update()
+    @shift_sprite.update()
+    @charge_sprite.update()
+    unless @__hud_wrapper.actor.nil?()
       for i in 0...@skills.size
         obj = @__hud_wrapper.actor.skill_slot( i )
-        hnd = @__hud_wrapper.actor.get_skill_handle( obj.nil? ? 0 : obj.id )
+        hnd = @__hud_wrapper.actor.get_skill_handle( obj.nil?() ? 0 : obj.id )
         sprite = @skills[i]
         sprite.tone.gray = 255.0 * hnd.time.to_f / [hnd.cap, 1].max
         sprite.bush_depth = sprite.height * hnd.time.to_f / [hnd.cap, 1].max
-        icon_index = obj.nil? ? 0 : obj.icon_index
+        icon_index = obj.nil?() ? 0 : obj.icon_index
         if sprite.icon_index != icon_index
           if sprite.active_effect == "none" && sprite.opacity == 0
             sprite.icon_index = icon_index
@@ -10056,15 +10164,15 @@ class ::YGG::Handlers::Hud
             sprite.active_effect = "fadeout"
           end
         end
-        sprite.update
+        sprite.update()
       end
       for i in 0...@items.size
         obj = @__hud_wrapper.actor.item_slot( i )
-        hnd = @__hud_wrapper.actor.get_item_handle( obj.nil? ? 0 : obj.id )
+        hnd = @__hud_wrapper.actor.get_item_handle( obj.nil?() ? 0 : obj.id )
         sprite = @items[i]
         sprite.tone.gray = 255.0 * hnd.time.to_f / [hnd.cap, 1].max
         sprite.bush_depth = sprite.height * hnd.time.to_f / [hnd.cap, 1].max
-        icon_index = obj.nil? ? 0 : obj.icon_index
+        icon_index = obj.nil?() ? 0 : obj.icon_index
         if sprite.icon_index != icon_index
           if sprite.active_effect == "none" && sprite.opacity == 0
             sprite.icon_index = icon_index
@@ -10074,182 +10182,9 @@ class ::YGG::Handlers::Hud
             sprite.active_effect = "fadeout"
           end
         end
-        sprite.update
+        sprite.update()
       end
     end
   end
 
 end
-
-#==============================================================================#
-# ** YGG::System
-#==============================================================================#
-class YGG::System
-
-if YGG::DROPS_WINDOW_SWITCH.nil? || YGG::DROPS_WINDOW_SWITCH == 0
-
-  #--------------------------------------------------------------------------#
-  # * new-method :drops_window_visible?
-  #--------------------------------------------------------------------------#
-  def drops_window_visible? ; return true ; end
-
-else
-
-  #--------------------------------------------------------------------------#
-  # * new-method :drops_window_visible?
-  #--------------------------------------------------------------------------#
-  def drops_window_visible?
-    return $game_switches[::YGG::DROPS_WINDOW_SWITCH]
-  end
-
-end
-
-end
-
-if YGG::USE_HUD
-#==============================================================================#
-# ** Scene_Map
-#==============================================================================#
-class Scene_Map < Scene_Base
-
-  #--------------------------------------------------------------------------#
-  # * Class Variable(s)
-  #--------------------------------------------------------------------------#
-  @@__temp = 0
-
-  #--------------------------------------------------------------------------#
-  # * alias-method :start
-  #--------------------------------------------------------------------------#
-  alias :ygg1x6_hud_start :start unless $@
-  def start( *args, &block )
-    ygg1x6_hud_start( *args, &block )
-    create_ygg_hud
-  end
-
-  #--------------------------------------------------------------------------#
-  # * new-method :create_ygg_hud
-  #--------------------------------------------------------------------------#
-  def create_ygg_hud
-    @ygg_hud = ::YGG::Handlers::Hud.new( *$game_yggdrasil.hud.get_obj_xyz( :main ) )
-    update_ygg_hud
-  end
-
-  #--------------------------------------------------------------------------#
-  # * alias-method :update
-  #--------------------------------------------------------------------------#
-  alias :ygg1x6_hud_update :update unless $@
-  def update( *args, &block )
-    ygg1x6_hud_update( *args, &block )
-    update_ygg_hud
-  end
-
-  #--------------------------------------------------------------------------#
-  # * new-method :update_ygg_hud
-  #--------------------------------------------------------------------------#
-  def update_ygg_hud
-    @@__temp = $game_yggdrasil.hud.visible?
-    @ygg_hud.visible = @@__temp if @ygg_hud.visible != @@__temp
-    @ygg_hud.update
-  end
-
-  #--------------------------------------------------------------------------#
-  # * alias-method :terminate
-  #--------------------------------------------------------------------------#
-  alias :ygg1x6_hud_terminate :terminate unless $@
-  def terminate( *args, &block )
-    ygg1x6_hud_terminate( *args, &block )
-    @ygg_hud.dispose unless @ygg_hud.nil? ; @ygg_hud = nil
-  end
-
-end
-
-end
-
-#==============================================================================#
-# ** YGG::System
-#==============================================================================#
-class YGG::System
-
-  #--------------------------------------------------------------------------#
-  # * new-method :start_target_selection
-  #--------------------------------------------------------------------------#
-  def start_target_selection( target_count=1, targets=[] )
-    return [] if targets.empty?
-    darken_sprite = Sprite.new
-    darken_sprite.bitmap = Cache.picture( "BlackSheet" )
-    darken_sprite.opacity = 96
-    target_cursor = Sprite.new
-    target_cursor.bitmap = Cache.picture( "YGG2_Cursor" )
-    target_cursor.ox, target_cursor.oy = 16, 64
-    hold_cursors = [] ; target_index = 0
-    targets.sort! { |a, b| a.screen_x <=> b.screen_x }
-    target = targets[target_index]
-    selected_targets = []
-    target_cursor.x, target_cursor.y = target.screen_x, target.screen_y unless target.nil?
-    loop do
-      Graphics.update
-      Input.update
-      if Input.trigger?( Input::RIGHT ) || Input.trigger?( Input::DOWN )
-        Sound.play_cursor
-        target_index = (target_index + 1) % [targets.size, 1].max
-        target = targets[target_index]
-      elsif Input.trigger?( Input::LEFT ) || Input.trigger?( Input::UP )
-        Sound.play_cursor
-        target_index = (target_index - 1) % [targets.size, 1].max
-        target = targets[target_index]
-      end
-      if Input.trigger?( Input::C )
-        Sound.play_decision
-        selected_targets << target
-        if selected_targets.size == target_count
-          break
-        else
-          sp = Sprite.new
-          sp.bitmap = Cache.picture( "YGG2_Cursor" )
-          sp.ox, sp.oy = 16, 64
-          sp.zoom_x, sp.zoom_y = 0.75, 0.75
-          sp.x, sp.y = target.screen_x, target.screen_y
-          hold_cursors << sp
-        end
-      elsif Input.trigger?( Input::B )
-        Sound.play_cancel
-        selected_targets.pop
-        sp = hold_cursors.pop ; sp.dispose unless sp.nil?
-        break if selected_targets.empty?
-      end
-      unless target.nil?
-        if target.screen_x > target_cursor.x
-          target_cursor.x = [target_cursor.x + Graphics.width/30.0, target.screen_x].min
-        elsif target.screen_x < target_cursor.x
-          target_cursor.x = [target_cursor.x - Graphics.width/30.0, target.screen_x].max
-        end
-        if target.screen_y > target_cursor.y
-          target_cursor.y = [target_cursor.y + Graphics.height/30.0, target.screen_y].min
-        elsif target.screen_y < target_cursor.y
-          target_cursor.y = [target_cursor.y - Graphics.height/30.0, target.screen_y].max
-        end
-      end
-    end
-    hold_cursors.each { |s| s.dispose unless s.nil? } ; hold_cursors = nil
-    target_cursor.dispose ; darken_sprite.dispose
-    return selected_targets
-  end
-
-  #--------------------------------------------------------------------------#
-  # * new-method :start_xy_selection
-  #--------------------------------------------------------------------------#
-  def start_xy_selection
-  end
-
-  #--------------------------------------------------------------------------#
-  # * new-method :gameover_process
-  #--------------------------------------------------------------------------#
-  def gameover_process
-    $game_temp.next_scene = "gameover"
-  end
-
-end
-
-#=*==========================================================================*=#
-# ** END OF FILE
-#=*==========================================================================*=#

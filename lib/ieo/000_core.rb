@@ -119,8 +119,7 @@
 # $imported - Is mostly used by Japanese RPG Maker XP/VX scripters.
 #             This acts as a flag, or signal to show that "x" script is present.
 #             This is used for compatability with other future scripts.
-($imported ||= {})["IEO-Register"] = true
-$imported["IEO-Core"] = true
+$simport.r 'ieo/register', '1.1.0', 'IEO Core Registration module'
 #==============================================================================#
 # $ieo_script - This is a hash specific to IEO scripts
 #               they work just like the $imported, but there key is slightly
@@ -140,26 +139,24 @@ module IEO
 # ** REGISTER
 #==============================================================================#
   module REGISTER
-
-    module_function()
-
     @@installed_scripts = {}
   #--------------------------------------------------------------------------#
   # * new-method :log_all_scripts
   #--------------------------------------------------------------------------#
-    def log_all_scripts()
-      File.open("IEO-ScriptLog.log", "w+") { |file|
+    def self.log_all_scripts()
+      File.open("IEO-ScriptLog.log", "w+") do |file|
         scripts = $ieo_script.keys.compact.sort #{ |a, b| a[0] <=> b[0]}
-        scripts.each { |info|
+        scripts.each do |info|
           text = sprintf("Ver#{$ieo_script[info]} %03d-%s\n", info[0], info[1])
-          file.write(text) }
-      }
+          file.write(text)
+        end
+      end
     end
 
   #--------------------------------------------------------------------------#
   # * new-method :log_script
   #--------------------------------------------------------------------------#
-    def log_script(script_id, script_name, script_version)
+    def self.log_script(script_id, script_name, script_version)
       scr_oversion = @@installed_scripts[[script_id, script_name]]
       unless scr_oversion.nil?()
         if scr_oversion > script_version
@@ -182,29 +179,27 @@ module IEO
 # ** CORE
 #==============================================================================#
   module CORE
-
-    module_function()
-
   #--------------------------------------------------------------------------#
   # * new-method :quick_shop
   #--------------------------------------------------------------------------#
-    def quick_shop()
-      $game_temp.shop_goods = ($data_items.compact+
-       $data_weapons.compact+$data_armors.compact).inject([]) { |result, e|
-         case e
-         when RPG::Item
-           result << [0, e.id]
-         when RPG::Weapon
-           result << [1, e.id]
-         when RPG::Armor
-           result << [2, e.id]
-         end
-         result
-       }
-      $game_temp.shop_purchase_only = false
-      $scene = Scene_Shop.new()
-    end
+    def self.quick_shop
+      data = ($data_items + $data_weapons + $data_armors).compact
+      $game_temp.shop_goods = data.map do |e|
+        case e
+        when RPG::Item
+          result << [0, e.id]
+        when RPG::Weapon
+          result << [1, e.id]
+        when RPG::Armor
+          result << [2, e.id]
+        else
+          raise
+        end
+      end
 
+      $game_temp.shop_purchase_only = false
+      $scene = Scene_Shop.new
+    end
   end
 end
 #==============================================================================#

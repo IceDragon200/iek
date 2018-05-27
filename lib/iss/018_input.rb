@@ -17,7 +17,7 @@
 # ** ISS
 #==============================================================================#
 module ISS
-  install_script(18, :system, :input) if $imported["ISS-Core"]
+  install_script(18, :system, :input) if $simport.valid?('iss/core', '>= 1.9')
 end
 
 #==============================================================================#

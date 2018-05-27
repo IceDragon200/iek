@@ -1,4 +1,4 @@
-# The Lite Interpreter is a stripped down version of the regular game interpter
+# The Lite Interpreter is a stripped down version of the regular game interpreter
 # it removes most event/character related commands and only leaves the
 # party and message controls.
 $simport.r 'iek/lite_interpreter', '1.0.0', 'Light weight interpreter for scripting use' do |h|
